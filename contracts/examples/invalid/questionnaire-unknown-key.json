@@ -1,0 +1,12 @@
+{
+  "schema": "tracking.questionnaire/1",
+  "id": "invalido",
+  "version": 1,
+  "title": "Condição aponta para pergunta que não existe antes",
+  "questions": [
+    {
+      "key": "Q1", "type": "text", "role": "open", "text": "Pergunta",
+      "show_if": {"key": "Q9", "in": ["sim"]}
+    }
+  ]
+}

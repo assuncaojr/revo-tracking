@@ -1,0 +1,198 @@
+{
+  "schema": "tracking.questionnaire/1",
+  "id": "caxias-piloto-2027",
+  "version": 1,
+  "title": "Piloto Caxias — avaliação da gestão",
+  "description": "Questionário v1 aprovado em 31/10/2026 (docs/09-piloto-caxias.md).",
+  "lists": {
+    "areas": [
+      {"value": "saude", "label": "Saúde"},
+      {"value": "educacao", "label": "Educação"},
+      {"value": "lixo_limpeza", "label": "Coleta de lixo e limpeza"},
+      {"value": "ruas_pavimentacao", "label": "Ruas e pavimentação"},
+      {"value": "iluminacao", "label": "Iluminação"},
+      {"value": "agua_esgoto", "label": "Água e esgoto"},
+      {"value": "seguranca", "label": "Segurança"},
+      {"value": "transporte", "label": "Transporte"}
+    ],
+    "bairros": [
+      {"value": "centro", "label": "Centro"},
+      {"value": "cangalheiro", "label": "Cangalheiro"},
+      {"value": "pau_dagua", "label": "Pau d'Água"},
+      {"value": "ipem", "label": "Ipem"},
+      {"value": "castelo_branco", "label": "Castelo Branco"},
+      {"value": "salobro", "label": "Salobro"},
+      {"value": "fazendinha", "label": "Fazendinha"},
+      {"value": "alto_do_ipem", "label": "Alto do Ipem"},
+      {"value": "caldeiroes", "label": "Caldeirões"},
+      {"value": "dner", "label": "DNER"},
+      {"value": "vila_paraiso", "label": "Vila Paraíso"},
+      {"value": "mutirao", "label": "Mutirão"}
+    ],
+    "nomes": [
+      {"value": "gentil_neto", "label": "Gentil Neto", "aliases": ["Gentil", "Gentil Neto"]},
+      {"value": "paulinho", "label": "Paulinho", "aliases": ["Paulinho", "Paulo Marinho"]},
+      {"value": "lycia_waquim", "label": "Lycia Waquim", "aliases": ["Lycia", "Lícia"]},
+      {"value": "edmilson_sanches", "label": "Edmilson Sanches", "aliases": ["Edmilson"]}
+    ]
+  },
+  "nonresponse": [
+    {"value": "_ns", "label": "Não sabe"},
+    {"value": "_nr", "label": "Não respondeu"}
+  ],
+  "questions": [
+    {
+      "key": "A0", "type": "single", "role": "consent",
+      "text": "Aceita participar?",
+      "read_aloud": "Bom dia/tarde. Estou fazendo uma pesquisa sobre a cidade de Caxias. São poucas perguntas, leva uns 3 minutos e suas respostas são anônimas. Posso fazer?",
+      "options": [{"value": "sim", "label": "Sim"}, {"value": "nao", "label": "Não"}],
+      "nonresponse": false,
+      "terminate_if": {"key": "A0", "in": ["nao"]}, "terminate_status": "refused"
+    },
+    {
+      "key": "F1", "type": "single", "role": "filter",
+      "text": "Mora em Caxias?",
+      "options": [{"value": "sim", "label": "Sim"}, {"value": "nao", "label": "Não"}],
+      "nonresponse": false,
+      "terminate_if": {"key": "F1", "in": ["nao"]}, "terminate_status": "screened_out"
+    },
+    {
+      "key": "F2", "type": "number", "role": "quota",
+      "text": "Idade", "min": 0, "max": 120,
+      "nonresponse": false,
+      "terminate_if": {"key": "F2", "lt": 16}, "terminate_status": "screened_out",
+      "derive": {"key": "faixa_etaria", "bins": [[16, 24, "16-24"], [25, 34, "25-34"], [35, 44, "35-44"], [45, 59, "45-59"], [60, 120, "60+"]]}
+    },
+    {
+      "key": "F3", "type": "single", "role": "filter",
+      "text": "Vota em Caxias (título de eleitor daqui)?",
+      "options": [{"value": "sim", "label": "Sim"}, {"value": "nao", "label": "Não"}]
+    },
+    {
+      "key": "P1", "type": "single", "role": "quota",
+      "text": "Sexo",
+      "options": [{"value": "feminino", "label": "Feminino"}, {"value": "masculino", "label": "Masculino"}],
+      "nonresponse": false
+    },
+    {
+      "key": "P2", "type": "single", "role": "quota",
+      "text": "Escolaridade",
+      "options": [
+        {"value": "ate_fund_incompleto", "label": "Até fundamental incompleto"},
+        {"value": "fund_completo", "label": "Fundamental completo"},
+        {"value": "medio", "label": "Médio"},
+        {"value": "superior", "label": "Superior"}
+      ]
+    },
+    {
+      "key": "P3", "type": "single", "role": "profile",
+      "text": "Bairro onde mora",
+      "hint": "Pode ser diferente do bairro da entrevista.",
+      "options_list": "bairros", "allow_other": true
+    },
+    {
+      "key": "P4", "type": "single", "role": "profile",
+      "text": "Renda familiar",
+      "options": [
+        {"value": "ate_1sm", "label": "Até 1 salário mínimo"},
+        {"value": "1a2sm", "label": "De 1 a 2 salários"},
+        {"value": "2a5sm", "label": "De 2 a 5 salários"},
+        {"value": "mais_5sm", "label": "Mais de 5 salários"}
+      ]
+    },
+    {
+      "key": "G1", "type": "single", "role": "approval",
+      "text": "Aprova ou desaprova a forma como o prefeito está administrando Caxias?",
+      "options": [{"value": "aprova", "label": "Aprova"}, {"value": "desaprova", "label": "Desaprova"}]
+    },
+    {
+      "key": "G2", "type": "single", "role": "approval",
+      "text": "Como avalia a administração?",
+      "options": [
+        {"value": "otima", "label": "Ótima"},
+        {"value": "boa", "label": "Boa"},
+        {"value": "regular", "label": "Regular"},
+        {"value": "ruim", "label": "Ruim"},
+        {"value": "pessima", "label": "Péssima"}
+      ]
+    },
+    {
+      "key": "G3", "type": "scale", "role": "approval",
+      "text": "Nota de 0 a 10 para a administração", "min": 0, "max": 10
+    },
+    {
+      "key": "G4", "type": "grid", "role": "evaluation",
+      "text": "Desde o início desta gestão, a situação melhorou, ficou igual ou piorou em…",
+      "rows_list": "areas", "shuffle_rows": true,
+      "options": [
+        {"value": "melhorou", "label": "Melhorou"},
+        {"value": "igual", "label": "Ficou igual"},
+        {"value": "piorou", "label": "Piorou"}
+      ]
+    },
+    {
+      "key": "G5", "type": "single", "role": "evaluation",
+      "text": "No seu bairro, a prefeitura fez alguma obra ou melhoria no último ano?",
+      "options": [{"value": "sim", "label": "Sim"}, {"value": "nao", "label": "Não"}]
+    },
+    {
+      "key": "G5a", "type": "text", "role": "open",
+      "text": "Qual obra ou melhoria?",
+      "show_if": {"key": "G5", "in": ["sim"]}
+    },
+    {
+      "key": "G6", "type": "text", "role": "open",
+      "text": "Qual o maior problema do seu bairro hoje?"
+    },
+    {
+      "key": "G7", "type": "single", "role": "evaluation",
+      "text": "Se o prefeito pudesse resolver só uma coisa na cidade, o que deveria ser?",
+      "options_list": "areas", "shuffle": true
+    },
+    {
+      "key": "V1", "type": "single", "role": "vote_past",
+      "text": "Em quem você votou para prefeito em 2024?",
+      "options": [
+        {"value": "gentil_neto", "label": "Gentil Neto"},
+        {"value": "paulinho", "label": "Paulinho"},
+        {"value": "lycia_waquim", "label": "Lycia Waquim"},
+        {"value": "edmilson_sanches", "label": "Edmilson Sanches"},
+        {"value": "branco_nulo", "label": "Branco ou nulo", "fixed": true},
+        {"value": "nao_votou", "label": "Não votou", "fixed": true},
+        {"value": "nao_lembra", "label": "Não lembra", "fixed": true},
+        {"value": "prefere_nao_dizer", "label": "Prefere não dizer", "fixed": true}
+      ],
+      "shuffle": true,
+      "nonresponse": false
+    },
+    {
+      "key": "E1", "type": "single", "role": "evaluation",
+      "text": "Em 2028, prefere que o próximo prefeito continue o trabalho da gestão atual ou mude?",
+      "options": [
+        {"value": "continuar", "label": "Continuar"},
+        {"value": "mudar", "label": "Mudar"},
+        {"value": "depende", "label": "Depende"}
+      ]
+    },
+    {
+      "key": "E2", "type": "name", "role": "open",
+      "text": "Quem você gostaria que fosse o próximo prefeito?",
+      "hint": "Espontânea: não leia nomes. As sugestões são só para você, depois da resposta.",
+      "list": "nomes", "allow_free_text": true
+    },
+    {
+      "key": "C1", "type": "single", "role": "contact",
+      "text": "Aceita deixar um WhatsApp para receber o resultado desta pesquisa sobre o seu bairro?",
+      "options": [{"value": "sim", "label": "Sim"}, {"value": "nao", "label": "Não"}],
+      "nonresponse": false
+    },
+    {
+      "key": "C2", "type": "contact", "role": "contact",
+      "text": "Nome e WhatsApp",
+      "read_aloud": "Seu número será usado só para enviar o resultado desta pesquisa e pode ser apagado quando você pedir.",
+      "consent_text_version": "c1-v1",
+      "show_if": {"key": "C1", "in": ["sim"]},
+      "nonresponse": false
+    }
+  ]
+}

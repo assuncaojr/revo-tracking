@@ -1,0 +1,17 @@
+{
+  "schema": "tracking.interview/1",
+  "id": "7a2e3d4b-9c8f-4d2e-8b3c-4d5e6f7a8b9c",
+  "questionnaire": {"id": "caxias-piloto-2027", "version": 1},
+  "campaign_id": "0b5e8c1a-1111-4a2b-8c3d-000000000001",
+  "device_id": "0b5e8c1a-2222-4a2b-8c3d-000000000002",
+  "interviewer_id": "0b5e8c1a-3333-4a2b-8c3d-000000000003",
+  "session_id": "0b5e8c1a-4444-4a2b-8c3d-000000000004",
+  "point_id": "0b5e8c1a-5555-4a2b-8c3d-000000000005",
+  "approach": "flow",
+  "status": "refused",
+  "started_at": "2027-01-12T09:20:00-03:00",
+  "finished_at": "2027-01-12T09:20:12-03:00",
+  "location": null,
+  "answers": {"A0": {"value": "nao"}},
+  "client": {"app_version": "0.1.0"}
+}

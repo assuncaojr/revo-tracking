@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tracking/contracts/questionnaire.schema.json",
+  "title": "Questionário (uma versão)",
+  "description": "Documento imutável depois de publicado. Ver docs/14-especificacao-tecnica.md §3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "version", "title", "questions"],
+  "properties": {
+    "schema": {"const": "tracking.questionnaire/1"},
+    "id": {"$ref": "#/$defs/slug"},
+    "version": {"type": "integer", "minimum": 1},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "lists": {
+      "description": "Listas reutilizáveis de opções (bairros, áreas, nomes).",
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/slug"},
+      "additionalProperties": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/option"}}
+    },
+    "nonresponse": {
+      "description": "Botões padrão de não-resposta, não lidos ao entrevistado. Valores começam com '_'.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["value", "label"],
+        "properties": {
+          "value": {"type": "string", "pattern": "^_[a-z0-9_]+$"},
+          "label": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "questions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/question"}}
+  },
+  "$defs": {
+    "slug": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "key": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$"},
+    "value": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_]*$"},
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "label"],
+      "properties": {
+        "value": {"$ref": "#/$defs/value"},
+        "label": {"type": "string", "minLength": 1},
+        "aliases": {"type": "array", "items": {"type": "string"}},
+        "exclusive": {"type": "boolean", "description": "Em 'multi': marcar esta opção desmarca as outras (ex.: 'não rejeita ninguém')."},
+        "fixed": {"type": "boolean", "description": "Não entra no embaralhamento (ex.: 'outro' sempre no fim)."}
+      }
+    },
+    "scalar": {"type": ["string", "number", "boolean"]},
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["all"],
+          "properties": {"all": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/condition"}}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["any"],
+          "properties": {"any": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/condition"}}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["key"],
+          "minProperties": 2,
+          "maxProperties": 3,
+          "properties": {
+            "key": {"$ref": "#/$defs/key"},
+            "item": {"type": "string", "description": "Linha de uma grade."},
+            "in": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/scalar"}},
+            "not_in": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/scalar"}},
+            "lt": {"type": "number"},
+            "lte": {"type": "number"},
+            "gt": {"type": "number"},
+            "gte": {"type": "number"},
+            "answered": {"type": "boolean"},
+            "nonresponse": {"type": "boolean"}
+          }
+        }
+      ]
+    },
+    "derive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "bins"],
+      "properties": {
+        "key": {"$ref": "#/$defs/key"},
+        "bins": {
+          "description": "[mínimo, máximo, rótulo], limites inclusivos.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "string"}],
+            "items": false,
+            "minItems": 3
+          }
+        }
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "type", "role", "text"],
+      "properties": {
+        "key": {"$ref": "#/$defs/key"},
+        "type": {"enum": ["single", "multi", "number", "scale", "grid", "text", "name", "contact"]},
+        "role": {"enum": ["consent", "filter", "profile", "quota", "vote", "vote_past", "approval", "evaluation", "open", "contact"]},
+        "text": {"type": "string", "minLength": 1, "description": "Texto curto exibido ao entrevistador."},
+        "read_aloud": {"type": "string", "description": "Texto lido ao entrevistado, quando diferente de 'text'."},
+        "hint": {"type": "string", "description": "Instrução ao entrevistador (não lida)."},
+        "options": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/option"}},
+        "options_list": {"$ref": "#/$defs/slug", "description": "Usa uma lista de 'lists' como opções."},
+        "rows": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/option"}},
+        "rows_list": {"$ref": "#/$defs/slug"},
+        "list": {"$ref": "#/$defs/slug", "description": "Lista de sugestões do tipo 'name'."},
+        "allow_free_text": {"type": "boolean"},
+        "allow_other": {"type": "boolean", "description": "Acrescenta 'Outro' com texto livre."},
+        "min": {"type": "number"},
+        "max": {"type": "number"},
+        "max_choices": {"type": "integer", "minimum": 1},
+        "display": {"enum": ["list", "buttons", "disc"]},
+        "shuffle": {"type": "boolean"},
+        "shuffle_rows": {"type": "boolean"},
+        "scenario_group": {"$ref": "#/$defs/slug"},
+        "nonresponse": {
+          "description": "true (padrão): mostra os botões padrão; false: não mostra; lista: só esses valores.",
+          "oneOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "string", "pattern": "^_[a-z0-9_]+$"}}]
+        },
+        "required": {"type": "boolean", "description": "Padrão true: exige resposta ou não-resposta explícita."},
+        "show_if": {"$ref": "#/$defs/condition"},
+        "terminate_if": {"$ref": "#/$defs/condition"},
+        "terminate_status": {"enum": ["refused", "screened_out"]},
+        "derive": {"$ref": "#/$defs/derive"},
+        "consent_text_version": {"type": "string", "description": "Tipo 'contact': versão do texto de consentimento exibido."}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"enum": ["single", "multi"]}}},
+          "then": {"anyOf": [{"required": ["options"]}, {"required": ["options_list"]}]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "grid"}}},
+          "then": {"required": ["options"], "anyOf": [{"required": ["rows"]}, {"required": ["rows_list"]}]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "scale"}}},
+          "then": {"required": ["min", "max"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "name"}}},
+          "then": {"required": ["list"]}
+        },
+        {
+          "if": {"required": ["terminate_if"]},
+          "then": {"required": ["terminate_status"]}
+        }
+      ]
+    }
+  }
+}
