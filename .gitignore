@@ -1,0 +1,33 @@
+# Dados sensíveis e brutos (D22): nunca versionar
+tracking_reference/
+tse/
+*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# SO / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Gradle
+.gradle/
+build/
+local.properties
+*.jks
+*.keystore
