@@ -1,0 +1,24 @@
+# Dev local apenas. Em produção, o EasyPanel orquestra (docs/14-especificacao-tecnica.md §10).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tracking_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tracking
+      POSTGRES_PASSWORD: tracking
+      POSTGRES_DB: tracking
+      TZ: America/Fortaleza
+    ports:
+      - "5435:5432" # 5434 já é do finance_bot
+    volumes:
+      - tracking_pg:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracking -d tracking"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tracking_pg:
