@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, ApiError, type CampaignAccess, type Me, type Role } from "./api";
 import { DISCLAIMER, ROLE_LABELS } from "./format";
 import { Login } from "./pages/Login";
@@ -8,6 +8,11 @@ import { Details, Summary } from "./pages/Results";
 import { Neighborhoods } from "./pages/Neighborhoods";
 import { Questionnaire } from "./pages/Questionnaire";
 import { Manage } from "./pages/Manage";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LogOut } from "lucide-react";
 
 type Tab = "field" | "flags" | "summary" | "hoods" | "details" | "questionnaire" | "manage";
 
@@ -47,9 +52,9 @@ export function App() {
   );
   const current = tab && tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
 
-  if (me === undefined) return <div className="center">Carregando…</div>;
+  if (me === undefined) return <Centered>Carregando…</Centered>;
   if (me === null) return <Login onDone={loadMe} />;
-  if (!campaign) return <div className="center">Seu usuário não tem acesso a nenhuma campanha.</div>;
+  if (!campaign) return <Centered>Seu usuário não tem acesso a nenhuma campanha.</Centered>;
 
   const logout = async () => {
     await api.post("/api/auth/logout");
@@ -59,38 +64,58 @@ export function App() {
   return (
     <>
       <Watermark me={me} />
-      <header className="top">
-        <div>
-          <strong>{campaign.name}</strong>
-          <span className="muted"> · {ROLE_LABELS[campaign.role]}</span>
+      <header className="no-print sticky top-0 z-20 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
+              {campaign.name.slice(0, 1).toUpperCase()}
+            </span>
+            <div className="min-w-0 leading-tight">
+              <div className="truncate font-semibold">{campaign.name}</div>
+              <div className="text-xs text-muted-foreground">{ROLE_LABELS[campaign.role]}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {me.campaigns.length > 1 && (
+              <Select value={campaign.id} onValueChange={setCampaignId}>
+                <SelectTrigger size="sm" className="max-w-[46vw] bg-card">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {me.campaigns.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <span className="hidden text-sm text-muted-foreground sm:inline">{me.name}</span>
+            <Button variant="ghost" size="sm" onClick={logout}>
+              <LogOut />
+              Sair
+            </Button>
+          </div>
         </div>
-        <div className="row">
-          {me.campaigns.length > 1 && (
-            <select value={campaign.id} onChange={(e) => setCampaignId(e.target.value)}>
-              {me.campaigns.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+        {campaign.disclaimer_accepted && (
+          <Tabs value={current} onValueChange={(v) => setTab(v as Tab)}>
+            <TabsList
+              variant="line"
+              className="mx-auto flex h-11! w-full max-w-[1280px] justify-start overflow-x-auto px-2 [scrollbar-width:none] sm:px-4"
+            >
+              {tabs.map((t) => (
+                <TabsTrigger key={t.id} value={t.id} className="flex-none px-3">
+                  {t.label}
+                </TabsTrigger>
               ))}
-            </select>
-          )}
-          <span className="muted">{me.name}</span>
-          <button className="link" onClick={logout}>
-            Sair
-          </button>
-        </div>
+            </TabsList>
+          </Tabs>
+        )}
       </header>
       {!campaign.disclaimer_accepted ? (
         <DisclaimerGate campaign={campaign} onAccepted={loadMe} />
       ) : (
         <>
-          <nav className="tabs">
-            {tabs.map((t) => (
-              <button key={t.id} className={t.id === current ? "active" : ""} onClick={() => setTab(t.id)}>
-                {t.label}
-              </button>
-            ))}
-          </nav>
           <main>
             {current === "field" && <FieldNow campaignId={campaign.id} />}
             {current === "flags" && <Flags campaign={campaign} />}
@@ -100,7 +125,9 @@ export function App() {
             {current === "questionnaire" && <Questionnaire campaign={campaign} />}
             {current === "manage" && <Manage campaign={campaign} />}
           </main>
-          <footer className="disclaimer">{DISCLAIMER} Uso interno da campanha: não divulgar.</footer>
+          <footer className="no-print fixed inset-x-0 bottom-0 border-t bg-card px-4 py-2 text-xs text-muted-foreground max-sm:static max-sm:pb-4 sm:px-6">
+            {DISCLAIMER} Uso interno da campanha: não divulgar.
+          </footer>
         </>
       )}
     </>
@@ -117,17 +144,29 @@ function DisclaimerGate({ campaign, onAccepted }: { campaign: CampaignAccess; on
   };
   return (
     <main className="narrow">
-      <h1>Antes de começar</h1>
-      <p className="lead">{DISCLAIMER}</p>
-      <p>
-        Os dados desta campanha são de uso interno. Resultado de pesquisa interna não pode ser divulgado como
-        pesquisa eleitoral. Cada tela leva o seu nome, para que um eventual vazamento possa ser rastreado.
-      </p>
-      <button className="primary" onClick={accept} disabled={busy}>
-        Li e entendi
-      </button>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Antes de começar</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 leading-relaxed">
+          <p className="text-lg">{DISCLAIMER}</p>
+          <p className="text-muted-foreground">
+            Os dados desta campanha são de uso interno. Resultado de pesquisa interna não pode ser divulgado como
+            pesquisa eleitoral. Cada tela leva o seu nome, para que um eventual vazamento possa ser rastreado.
+          </p>
+        </CardContent>
+        <CardFooter>
+          <Button size="lg" onClick={accept} disabled={busy}>
+            Li e entendi
+          </Button>
+        </CardFooter>
+      </Card>
     </main>
   );
+}
+
+function Centered({ children }: { children: ReactNode }) {
+  return <div className="grid min-h-screen place-items-center p-4 text-muted-foreground">{children}</div>;
 }
 
 /** Marca d'água com nome, e-mail e horário em toda a tela: se um print vazar, sabemos de onde veio. */

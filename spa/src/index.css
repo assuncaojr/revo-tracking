@@ -1,0 +1,69 @@
+/* Ordem das camadas: o CSS antigo (legacy) vence o reset do Tailwind, mas perde para as classes
+   utilitárias, que é onde os componentes shadcn guardam o visual. Migração gradual (D30). */
+@layer theme, base, legacy, components, utilities;
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "./styles.css" layer(legacy);
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tokens do shadcn com a paleta do painel: grafite e cinza na interface; cor só nos dados
+   (azul = a favor da gestão, vermelho = contra), definida em styles.css. */
+:root {
+  --radius: 0.625rem;
+  --background: #f6f7f9;
+  --foreground: #1d2330;
+  --card: #ffffff;
+  --card-foreground: #1d2330;
+  --popover: #ffffff;
+  --popover-foreground: #1d2330;
+  --primary: #1d2330;
+  --primary-foreground: #ffffff;
+  --secondary: #ecebe7;
+  --secondary-foreground: #1d2330;
+  --muted: #f1f2f4;
+  --muted-foreground: #6b7280;
+  --accent: #ecebe7;
+  --accent-foreground: #1d2330;
+  --destructive: #b42318;
+  --border: #e3e6eb;
+  --input: #d9dde3;
+  --ring: #9aa1ad;
+}
+
+@theme inline {
+  --font-sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
