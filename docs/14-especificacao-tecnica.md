@@ -160,6 +160,7 @@ Todas as tabelas de campanha têm `campaign_id` desde o início (D10), mesmo com
 - `GET /results/overview` — panorama: indicadores-chave (configurados em `campaign.settings.indicators`) com margem de erro (Wilson, 95%) e variação contra os 7 dias anteriores, série diária e média móvel de 3 dias, estratos, grade de áreas
 - `GET /results/insights` — cruzamentos do indicador por voto passado, estrato e perfil; segmentos (`settings.segments`); rankings (`settings.rankings`); nome digitado fora da lista nunca sai como texto
 - `GET /results/map` — hexágonos (`settings.map.hex_m`, padrão 800 m no piloto) com indicador, margem e n; mínimo de 30 por hexágono para todos; GPS a mais de 50 km do centro da campanha fica fora (D26)
+- `GET /results/neighborhoods`, `GET /results/neighborhoods/{id}` — bairros (onde a entrevista foi feita) comparados com a cidade; ficha com frases, balanços, áreas e prioridades; mínimo de 30 por bairro para todos (D28). O panorama traz `headlines`: frases geradas por regras, que só afirmam diferença além da margem
 - `GET /field/map` (só equipe) — um ponto por entrevista do dia, com alertas abertos, para supervisão
 - `GET /field/progress` — feitas × meta por estrato
 - `POST /questionnaires/{id}/approve`

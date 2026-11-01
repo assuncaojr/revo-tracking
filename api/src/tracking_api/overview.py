@@ -113,6 +113,7 @@ class Context:
     qv: models.QuestionnaireVersion | None
     rows: list  # answers, derived, point_id, started_at, lat, lng, accuracy_m
     point_stratum: dict
+    point_hood: dict  # ponto → (id do bairro, nome do bairro)
 
     def day(self, row) -> date:
         return row.started_at.astimezone(self.tz).date()
@@ -154,7 +155,11 @@ def load_context(cid: uuid.UUID, user: models.User, s: Session, period: str) -> 
     return Context(campaign=campaign, client=client, hide=settings().min_cell if client else 1, tz=tz, today=today,
                    first_day=first_day, start=start, prev_start=prev_start, prev_end=prev_end,
                    indicators=(campaign.settings or {}).get("indicators", []), qv=qv, rows=rows,
-                   point_stratum=_strata(s, cid)[0])
+                   point_stratum=_strata(s, cid)[0],
+                   point_hood={p: (str(nid), name) for p, nid, name in s.execute(
+                       select(models.Point.id, models.Neighborhood.id, models.Neighborhood.name)
+                       .join(models.Neighborhood, models.Neighborhood.id == models.Point.neighborhood_id)
+                       .where(models.Point.campaign_id == cid))})
 
 
 Period = Annotated[Literal["7d", "all"], Query()]
@@ -244,12 +249,19 @@ def overview(cid: uuid.UUID, user: AuthUser, s: DbSession, period: Period = "7d"
     window_rows = [r for r in rows if c.in_window(r)]
     balances = [_balance(c, window_rows, b) for b in (c.campaign.settings or {}).get("balances", [])]
 
-    return {
+    from tracking_api.hoods import headlines  # hoods usa este módulo
+
+    today_rows = [r for r in rows if c.day(r) == today]
+    out = {
         "period": period, "start": start.isoformat(), "today": today.isoformat(),
+        "today_n": len(today_rows),
+        "last_at": max((r.started_at for r in rows), default=None),
         "previous": {"start": prev_start.isoformat(), "end": (prev_end - timedelta(days=1)).isoformat()} if prev_start else None,
         "n": n_window, "n_total": len(rows), "weighted": False, "min_cell": settings().min_cell if client else None,
         "strata": strata, "indicators": out_indicators, "grid": grid, "balances": balances,
     }
+    out["headlines"] = headlines(c, out)
+    return out
 
 
 def _balance(c: Context, rows: list, cfg: dict) -> dict:
