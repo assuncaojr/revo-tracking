@@ -4,6 +4,7 @@ Só para ver o painel com volume (modo cliente, células ocultas, alertas). Tudo
 fica marcado: aparelhos `DEMO-NN` e entrevistadores `Demo — ...`; `clear` apaga exatamente isso.
 """
 
+import math
 import random
 import uuid
 from datetime import UTC, date, datetime, time, timedelta
@@ -21,6 +22,16 @@ CENTER = (-4.8590, -43.3560)  # Caxias (MA)
 
 # Probabilidade de aprovar por estrato: a diferença entre estratos aparece no painel.
 APPROVAL = {"Central": 0.52, "Afastado": 0.38}
+
+
+def _fake_center(bairro: str, stratum: str) -> tuple[float, float]:
+    """Centro FICTÍCIO do bairro, só para os dados de demonstração terem espalhamento no mapa:
+    estrato Central perto do centro da cidade, Afastado mais longe. Não é a localização real do bairro."""
+    r = random.Random(bairro)
+    dist_m = r.uniform(300, 1300) if stratum == "Central" else r.uniform(1800, 3800)
+    ang = r.uniform(0, 2 * math.pi)
+    return (CENTER[0] + dist_m * math.sin(ang) / 110_540,
+            CENTER[1] + dist_m * math.cos(ang) / (111_320 * math.cos(math.radians(CENTER[0]))))
 
 
 def _pick(rng: random.Random, weights: dict[str, float]) -> str:
@@ -156,6 +167,7 @@ def seed(s: Session, campaign_id: uuid.UUID, days: int = 10, per_day: int = 70, 
         for interviewer, device in team:
             point, bairro, stratum = rng.choice(points)
             bairro_value = bairro_by_label.get(bairro) or rng.choice(sorted(bairro_by_label.values()))
+            lat_c, lng_c = (point.lat, point.lng) if point.lat is not None else _fake_center(bairro, stratum)
             session_id = uuid.uuid4()
             t = datetime.combine(day, time(8, rng.randint(0, 40)), tz)
             end_of_day = datetime.combine(day, time(17, 0), tz)
@@ -185,8 +197,8 @@ def seed(s: Session, campaign_id: uuid.UUID, days: int = 10, per_day: int = 70, 
                     "started_at": t.isoformat(timespec="seconds"),
                     "finished_at": finished.isoformat(timespec="seconds"),
                     "location": None if no_gps else {
-                        "lat": round((point.lat or CENTER[0]) + rng.uniform(-0.002, 0.002), 6),
-                        "lng": round((point.lng or CENTER[1]) + rng.uniform(-0.002, 0.002), 6),
+                        "lat": round(lat_c + rng.gauss(0, 0.0025), 6),
+                        "lng": round(lng_c + rng.gauss(0, 0.0025), 6),
                         "accuracy_m": rng.randint(5, 40),
                         "captured_at": (t + timedelta(seconds=2)).isoformat(timespec="seconds")},
                     "answers": answers,
