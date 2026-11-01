@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, ApiError, type CampaignAccess, type Me } from "./api";
+import { api, ApiError, type CampaignAccess, type Me, type Role } from "./api";
 import { DISCLAIMER, ROLE_LABELS } from "./format";
 import { Login } from "./pages/Login";
 import { FieldNow } from "./pages/FieldNow";
@@ -7,15 +7,17 @@ import { Flags } from "./pages/Flags";
 import { Results } from "./pages/Results";
 import { Progress } from "./pages/Progress";
 import { Questionnaire } from "./pages/Questionnaire";
+import { Manage } from "./pages/Manage";
 
-type Tab = "field" | "flags" | "results" | "progress" | "questionnaire";
+type Tab = "field" | "flags" | "results" | "progress" | "questionnaire" | "manage";
 
-const TABS: { id: Tab; label: string; staffOnly?: boolean }[] = [
+const TABS: { id: Tab; label: string; staffOnly?: boolean; roles?: Role[] }[] = [
   { id: "field", label: "Campo agora", staffOnly: true },
   { id: "flags", label: "Alertas", staffOnly: true },
   { id: "results", label: "Resultados" },
   { id: "progress", label: "Progresso" },
   { id: "questionnaire", label: "Questionário" },
+  { id: "manage", label: "Cadastros", roles: ["admin", "supervisor"] },
 ];
 
 export function App() {
@@ -39,7 +41,9 @@ export function App() {
   }, [loadMe]);
 
   const campaign = me?.campaigns.find((c) => c.id === campaignId) ?? null;
-  const tabs = TABS.filter((t) => !t.staffOnly || campaign?.staff);
+  const tabs = TABS.filter(
+    (t) => (!t.staffOnly || campaign?.staff) && (!t.roles || (campaign && t.roles.includes(campaign.role))),
+  );
   const current = tab && tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
 
   if (me === undefined) return <div className="center">Carregando…</div>;
@@ -92,6 +96,7 @@ export function App() {
             {current === "results" && <Results campaign={campaign} />}
             {current === "progress" && <Progress campaignId={campaign.id} />}
             {current === "questionnaire" && <Questionnaire campaign={campaign} />}
+            {current === "manage" && <Manage campaign={campaign} />}
           </main>
           <footer className="disclaimer">{DISCLAIMER} Uso interno da campanha: não divulgar.</footer>
         </>

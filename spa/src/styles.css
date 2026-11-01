@@ -71,3 +71,22 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: upp
 .questions p { margin: 6px 0 0; }
 .aloud { font-style: italic; color: var(--muted); }
 .cond { color: var(--warn); font-size: 13px; }
+
+/* Cadastros */
+.subnav { margin-bottom: 16px; flex-wrap: wrap; }
+.subnav button.active { background: var(--accent-soft); border-color: var(--accent-soft); font-weight: 600; }
+.form { flex-wrap: wrap; margin: 12px 0; }
+.form input { min-width: 180px; }
+tr.inactive td { color: var(--muted); }
+table.compact input, table.compact select { padding: 5px 8px; font-size: 14px; }
+table.compact input.coord { width: 110px; }
+.hood { margin: 10px 0; display: grid; gap: 10px; }
+.secret { border-color: var(--warn); background: var(--warn-soft); margin: 12px 0; }
+.code { font-family: ui-monospace, Menlo, monospace; font-size: 22px; letter-spacing: 0.08em; margin: 8px 0; user-select: all; }
+.code.small { font-size: 14px; letter-spacing: 0.04em; }
+.cred { align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+.cred dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; }
+.cred dt { color: var(--muted); font-size: 13px; }
+.cred dd { margin: 0; }
+.upload { margin: 12px 0; }
+.upload summary { cursor: pointer; font-weight: 600; }

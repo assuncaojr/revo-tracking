@@ -180,3 +180,61 @@ export interface QuestionnaireDef {
   nonresponse?: QOption[];
   questions: QQuestion[];
 }
+
+// --- cadastros (D25) ---
+
+export interface ManagedInterviewer {
+  id: string;
+  name: string;
+  active: boolean;
+  complete: number;
+  last_at: string | null;
+}
+
+export interface ManagedDevice {
+  id: string;
+  label: string;
+  model: string | null;
+  app_version: string | null;
+  enrolled_at: string | null;
+  revoked_at: string | null;
+  last_seen_at: string | null;
+  pending_count: number | null;
+  battery_pct: number | null;
+  active: boolean;
+  awaiting_enrollment: boolean;
+}
+
+export interface Places {
+  strata: { id: string; name: string; daily_target: number | null }[];
+  neighborhoods: { id: string; name: string; stratum_id: string | null }[];
+  points: {
+    id: string;
+    name: string;
+    neighborhood_id: string;
+    kind: "flow" | "door";
+    lat: number | null;
+    lng: number | null;
+    active: boolean;
+  }[];
+}
+
+export interface Member {
+  id: number;
+  user_id: string;
+  name: string;
+  email: string;
+  role: Role;
+  active: boolean;
+  is_me: boolean;
+  disclaimer_accepted_at: string | null;
+  last_login_at: string | null;
+}
+
+/** Mostradas uma única vez, para entregar à pessoa. */
+export interface Credentials {
+  email: string;
+  password: string;
+  totp_secret: string;
+  totp_uri: string;
+}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, type CampaignAccess, type Condition, type QQuestion, type QuestionnaireDef, type QuestionnaireVersion } from "../api";
+import { api, ApiError, type CampaignAccess, type Condition, type QQuestion, type QuestionnaireDef, type QuestionnaireVersion } from "../api";
 import { usePoll } from "../usePoll";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -18,12 +18,32 @@ export function Questionnaire({ campaign }: { campaign: CampaignAccess }) {
   const { data, error, reload } = usePoll<QuestionnaireVersion[]>(`/api/campaigns/${campaign.id}/questionnaires`, 0);
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const isAdmin = campaign.role === "admin";
   if (error) return <p className="error">{error}</p>;
   if (!data) return <p>Carregando…</p>;
-  if (data.length === 0) return <p>Nenhum questionário.</p>;
+  if (data.length === 0)
+    return (
+      <>
+        <p>Nenhum questionário.</p>
+        {isAdmin && <Upload campaignId={campaign.id} onDone={(id) => reload().then(() => setSelected(id))} />}
+      </>
+    );
 
   const qv = data.find((v) => v.id === selected) ?? data[0];
-  const canApprove = (campaign.role === "client_coord" || campaign.role === "admin") && !qv.approved_at;
+  const canApprove = (campaign.role === "client_coord" || isAdmin) && !qv.approved_at;
+  const canPublish = isAdmin && !!qv.approved_at && !qv.published_at;
+
+  const publish = async () => {
+    if (!window.confirm(`Publicar a versão ${qv.version}? Os aparelhos passam a usá-la na próxima vez que abrirem com rede.`))
+      return;
+    setBusy(true);
+    try {
+      await api.post(`/api/campaigns/${campaign.id}/questionnaires/${qv.id}/publish`);
+      await reload();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const approve = async () => {
     if (!window.confirm(`Aprovar a versão ${qv.version} do questionário? A aprovação fica registrada com o seu nome.`)) return;
@@ -63,13 +83,63 @@ export function Questionnaire({ campaign }: { campaign: CampaignAccess }) {
             Aprovar esta versão
           </button>
         )}
+        {canPublish && (
+          <button className="primary" disabled={busy} onClick={publish} style={{ marginLeft: 12 }}>
+            Publicar esta versão
+          </button>
+        )}
       </p>
+      {isAdmin && <Upload campaignId={campaign.id} onDone={(id) => reload().then(() => setSelected(id))} />}
       <ol className="questions">
         {qv.definition.questions.map((q) => (
           <QuestionPreview key={q.key} q={q} def={qv.definition} />
         ))}
       </ol>
     </>
+  );
+}
+
+/** Nova versão a partir do arquivo JSON (validada no núcleo contra o contrato). Depois: aprovação e publicação. */
+function Upload({ campaignId, onDone }: { campaignId: string; onDone: (id: string) => void }) {
+  const [msg, setMsg] = useState<{ error: boolean; text: string } | null>(null);
+  const send = async (file: File) => {
+    setMsg(null);
+    let definition: unknown;
+    try {
+      definition = JSON.parse(await file.text());
+    } catch {
+      setMsg({ error: true, text: "O arquivo não é um JSON válido." });
+      return;
+    }
+    try {
+      const r = await api.post<{ id: string; version: number }>(
+        `/api/campaigns/${campaignId}/manage/questionnaires`,
+        definition,
+      );
+      setMsg({ error: false, text: `Versão ${r.version} carregada. Falta a aprovação do cliente e a publicação.` });
+      onDone(r.id);
+    } catch (e) {
+      setMsg({ error: true, text: e instanceof ApiError ? e.message : String(e) });
+    }
+  };
+  return (
+    <details className="card upload">
+      <summary>Carregar nova versão (arquivo JSON)</summary>
+      <p className="muted small">
+        O arquivo segue o formato de <code>contracts/questionnaire.schema.json</code>. Versões são imutáveis: para
+        mudar, aumente o número da versão.
+      </p>
+      <input
+        type="file"
+        accept="application/json,.json"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) send(f);
+          e.target.value = "";
+        }}
+      />
+      {msg && <pre className={msg.error ? "error small" : "small"}>{msg.text}</pre>}
+    </details>
   );
 }
 
