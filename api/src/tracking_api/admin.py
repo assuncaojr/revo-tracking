@@ -63,14 +63,17 @@ def add_point(s: Session, campaign_id: uuid.UUID, neighborhood_id: uuid.UUID, na
 
 
 def add_interviewer(s: Session, campaign_id: uuid.UUID, name: str, pin: str):
-    if not (pin.isdigit() and 4 <= len(pin) <= 8):
-        raise AdminError("PIN deve ter de 4 a 8 dígitos")
-    salt, digest, iterations = security.hash_pin(pin)
-    i = models.Interviewer(campaign_id=campaign_id, name=name, pin_salt=salt, pin_hash=digest,
-                           pin_iterations=iterations)
+    i = models.Interviewer(campaign_id=campaign_id, name=name)
+    set_interviewer_pin(i, pin)
     s.add(i)
     s.flush()
     return i
+
+
+def set_interviewer_pin(i: models.Interviewer, pin: str):
+    if not (pin.isdigit() and 4 <= len(pin) <= 8):
+        raise AdminError("PIN deve ter de 4 a 8 dígitos")
+    i.pin_salt, i.pin_hash, i.pin_iterations = security.hash_pin(pin)
 
 
 def add_device(s: Session, campaign_id: uuid.UUID, label: str, valid_hours: int = 72) -> tuple[models.Device, str]:
