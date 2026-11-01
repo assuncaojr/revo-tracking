@@ -264,3 +264,54 @@ function RankRow({ it, strata }: { it: RankingItem; strata: string[] }) {
     </div>
   );
 }
+
+/** Resumo dos cruzamentos: os grupos que se diferenciam do total de verdade, separados por lado (D28, item 6). */
+export function Highlights({ data }: { data: InsightsData }) {
+  const ct = data.crosstab;
+  if (!ct || ct.total.value == null) return null;
+  const mean = ct.indicator.mean;
+  const items = ct.dimensions.flatMap((d) =>
+    d.groups
+      .map((g) => ({ g, d, tone: toneOf(g, ct.total.value, ct.indicator.favorable, mean) }))
+      .filter((x) => x.tone != null && x.tone !== "same")
+      .map((x) => ({ ...x, diff: Math.abs(x.g.value! - ct.total.value!) })),
+  );
+  const better = items.filter((x) => x.tone!.startsWith("fav")).sort((a, b) => b.diff - a.diff);
+  const worse = items.filter((x) => x.tone!.startsWith("unfav")).sort((a, b) => b.diff - a.diff);
+  const list = (xs: typeof items, color: string, empty: string) =>
+    xs.length === 0 ? (
+      <p className="muted small">{empty}</p>
+    ) : (
+      <ul>
+        {xs.slice(0, 5).map(({ g, d }) => (
+          <li key={`${d.key}-${g.group}`}>
+            <i style={{ background: color }} />
+            <span>
+              <span className="muted">{d.label}:</span> <strong>{g.label}</strong>
+            </span>
+            <strong className="hl-value">{fmt(g.value, mean)}</strong>
+          </li>
+        ))}
+      </ul>
+    );
+  return (
+    <div className="card highlights">
+      <h3>
+        {ct.indicator.label}: onde a gestão vai melhor e onde vai pior
+      </h3>
+      <p className="muted small">
+        Comparado com o total ({fmt(ct.total.value, mean)}). Só entram diferenças além da margem de erro.
+      </p>
+      <div className="two-up tight">
+        <div>
+          <h4>Mais favorável à gestão</h4>
+          {list(better, FAV, "Nenhum grupo acima do total além da margem.")}
+        </div>
+        <div>
+          <h4>Menos favorável à gestão</h4>
+          {list(worse, UNFAV, "Nenhum grupo abaixo do total além da margem.")}
+        </div>
+      </div>
+    </div>
+  );
+}

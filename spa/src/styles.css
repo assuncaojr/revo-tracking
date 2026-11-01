@@ -294,3 +294,51 @@ svg .half-label { fill: var(--muted); font-size: 11px; }
   table { font-size: 13px; }
   .result table { display: block; overflow-x: auto; }
 }
+
+/* Marcos, método, boletim (D29) */
+svg .mark line { stroke: #5b6472; stroke-width: 1; }
+svg .mark circle { fill: var(--text); stroke: var(--card); stroke-width: 2; }
+svg .mark text { fill: #fff; font-size: 11px; font-weight: 700; }
+.marks { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.marks li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: baseline; }
+.mark-n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--text); color: #fff; font-size: 11px; font-weight: 700; }
+.highlights ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.highlights li { display: grid; grid-template-columns: 10px 1fr auto; gap: 8px; align-items: baseline; font-size: 14px; }
+.highlights li i { width: 10px; height: 10px; border-radius: 50%; }
+.highlights h4 { margin: 6px 0 8px; font-size: 13px; color: var(--muted); }
+.hl-value { font-variant-numeric: tabular-nums; }
+.two-up.tight { margin: 0; gap: 24px; }
+.method-numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 12px 0; }
+.method-numbers .card { display: grid; gap: 2px; }
+.method-numbers strong { font-size: 26px; font-weight: 650; }
+.method-numbers span { font-size: 13px; color: var(--muted); }
+.prose { max-width: 760px; line-height: 1.6; font-size: 15px; }
+.prose p { margin: 0 0 12px; }
+@media (max-width: 640px) {
+  .method-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .method-numbers strong { font-size: 22px; }
+}
+.report-btn { margin-left: auto; font-weight: 600; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.report-head { margin: 12px 0 8px; }
+.report-head h1 { font-size: 24px; margin: 6px 0 4px; }
+.report-head p { margin: 2px 0; }
+.report-stamp { display: inline-block; border: 2px solid var(--unfav); color: var(--unfav); font-weight: 800; letter-spacing: 0.08em; font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+.report-foot { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 8px; color: var(--muted); }
+.report .tile { cursor: default; }
+@media (max-width: 640px) {
+  .report-btn { margin-left: 0; width: 100%; }
+}
+
+/* Impressão do boletim: só o conteúdo, cores e marca d'água preservadas */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff; }
+  .top, .tabs, .disclaimer, .no-print { display: none !important; }
+  main { padding: 0; max-width: none; }
+  .watermark { position: fixed; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .card, .chart-card, .balances > div, .headlines, tr { break-inside: avoid; }
+  .tile.selected { box-shadow: none; border-color: var(--line); }
+  .chart-card button.link { display: none; }
+}

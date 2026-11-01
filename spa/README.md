@@ -6,11 +6,11 @@ React 19 + TypeScript + Vite, sem biblioteca visual. Uma aplicação, dois públ
 |---|---|---|
 | Campo agora | produção por entrevistador, aparelhos, cotas do dia (atualiza a cada minuto) | — |
 | Alertas | revisar: aceitar ou excluir a entrevista (admin e supervisor) | — |
-| Resumo (D28) | o que a pesquisa mostra em frases, balanços a favor × contra a gestão, indicadores com tendência, evolução, áreas | idem |
+| Resumo (D28) | o que a pesquisa mostra em frases, balanços a favor × contra a gestão, indicadores com tendência, evolução com marcos da campanha (D29), áreas; boletim para reunião (imprimir/PDF) | idem |
 | Bairros (D28) | lista comparando com a cidade, ficha do bairro, mapa em hexágonos (D26) e cobertura do campo | idem, sem a cobertura |
-| Detalhes | cruzamentos (só o que se diferencia, com opção de ver tudo), segmentos, rankings, pergunta a pergunta, progresso do campo | idem, com grupos de menos de 30 entrevistas ocultos |
+| Detalhes | onde a gestão vai melhor e pior, cruzamentos (só o que se diferencia, com opção de ver tudo), segmentos, rankings, pergunta a pergunta, progresso do campo, como a pesquisa é feita | idem, com grupos de menos de 30 entrevistas ocultos |
 | Questionário | prévia de leitura; admin carrega nova versão (JSON) e publica | prévia e **aprovação** (coordenação) |
-| Cadastros (D25) | entrevistadores e aparelhos (admin e supervisor); estratos, bairros, pontos e usuários do painel (admin) | — |
+| Cadastros (D25) | entrevistadores, aparelhos e marcos da campanha (admin e supervisor); estratos, bairros, pontos e usuários do painel (admin) | — |
 
 Cor só nos dados: azul = a favor da gestão, vermelho = contra, cinza = dentro da margem. Margens de erro escondidas por padrão ("Mostrar margens de erro"). Pensado também para celular.
 

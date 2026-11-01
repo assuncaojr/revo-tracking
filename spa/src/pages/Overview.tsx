@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Balance, Estimate, Indicator, Overview as OverviewData } from "../api";
+import type { Balance, CampaignEventItem, Estimate, Indicator, Overview as OverviewData } from "../api";
 import { useShowMargins } from "../prefs";
 import { changeColor } from "../tone";
 
@@ -216,7 +216,8 @@ function useWidth<T extends HTMLElement>(fallback: number) {
   const [w, setW] = useState(fallback);
   useEffect(() => {
     if (!ref.current) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.round(e.contentRect.width)));
+    // largura 0 (contêiner ainda escondido, troca para impressão): mantém a última medida
+    const ro = new ResizeObserver(([e]) => e.contentRect.width > 0 && setW(Math.round(e.contentRect.width)));
     ro.observe(ref.current);
     return () => ro.disconnect();
   }, []);
@@ -246,14 +247,14 @@ function niceDomain(ind: Indicator): [number, number, number] {
 }
 
 /** Média móvel de 3 dias (linha) com a faixa da margem de erro; cada dia sozinho em pontos cinza. */
-export function TrendChart({ ind }: { ind: Indicator }) {
+export function TrendChart({ ind, events = [] }: { ind: Indicator; events?: CampaignEventItem[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
   const [wrapRef, W] = useWidth<HTMLDivElement>(760);
   const color = polarityColor(ind);
   const s = ind.series;
   const [y0, y1, tickStep] = useMemo(() => niceDomain(ind), [ind]);
-  const iw = W - PAD.left - PAD.right;
+  const iw = Math.max(1, W - PAD.left - PAD.right);
   const ih = H - PAD.top - PAD.bottom;
   const x = (i: number) => PAD.left + (s.length === 1 ? iw / 2 : (i * iw) / (s.length - 1));
   const y = (v: number) => PAD.top + ih - ((v - y0) / (y1 - y0)) * ih;
@@ -272,6 +273,11 @@ export function TrendChart({ ind }: { ind: Indicator }) {
       : "";
   const last = pts[pts.length - 1];
   const h = hover != null ? s[hover] : null;
+  // Marcos da campanha (D29): numerados na ordem, no dia em que aconteceram
+  const marks = events
+    .map((e, k) => ({ ...e, n: k + 1, i: s.findIndex((d) => d.day === e.day) }))
+    .filter((e) => e.i >= 0);
+  const hoverMarks = hover != null ? marks.filter((m) => m.i === hover) : [];
 
   return (
     <div className="chart-card card">
@@ -280,6 +286,7 @@ export function TrendChart({ ind }: { ind: Indicator }) {
           <h3>{ind.label}: evolução</h3>
           <p className="muted small">
             Linha: média dos últimos 3 dias, com a faixa da margem de erro. Pontos: cada dia sozinho (oscilam mais).
+            {marks.length > 0 && " Números: marcos da campanha."}
           </p>
         </div>
         <button className="link" onClick={() => setTable(!table)}>
@@ -341,6 +348,15 @@ export function TrendChart({ ind }: { ind: Indicator }) {
               </g>
             )}
             {band && <path d={band} fill={color} opacity={0.12} />}
+            {marks.map((m) => (
+              <g key={`${m.day}-${m.n}`} className="mark">
+                <line x1={x(m.i)} x2={x(m.i)} y1={PAD.top + 9} y2={PAD.top + ih} />
+                <circle cx={x(m.i)} cy={PAD.top} r={9} />
+                <text x={x(m.i)} y={PAD.top} textAnchor="middle" dominantBaseline="central">
+                  {m.n}
+                </text>
+              </g>
+            ))}
             {s.map((d, i) =>
               d.daily.value != null ? (
                 <circle
@@ -395,9 +411,29 @@ export function TrendChart({ ind }: { ind: Indicator }) {
               <div className="muted">
                 Só o dia: {fmt(h.daily.value, ind.mean)} · {h.daily.n} entrevistas
               </div>
+              {hoverMarks.map((m) => (
+                <div key={m.n}>
+                  <strong>
+                    {m.n}. {m.title}
+                  </strong>
+                </div>
+              ))}
             </div>
           )}
         </div>
+      )}
+      {marks.length > 0 && !table && (
+        <ol className="marks">
+          {marks.map((m) => (
+            <li key={`${m.day}-${m.n}`}>
+              <span className="mark-n">{m.n}</span>
+              <span>
+                <strong>{dayLabel(m.day)}</strong> {m.title}
+                {m.note && <span className="muted"> · {m.note}</span>}
+              </span>
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   );

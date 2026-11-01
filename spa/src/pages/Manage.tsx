@@ -4,6 +4,7 @@ import {
   api,
   ApiError,
   type CampaignAccess,
+  type CampaignEventItem,
   type Credentials,
   type ManagedDevice,
   type ManagedInterviewer,
@@ -14,11 +15,12 @@ import {
 import { ago, ROLE_LABELS } from "../format";
 import { usePoll } from "../usePoll";
 
-type Section = "interviewers" | "devices" | "places" | "members";
+type Section = "interviewers" | "devices" | "events" | "places" | "members";
 
 const SECTIONS: { id: Section; label: string; adminOnly?: boolean }[] = [
   { id: "interviewers", label: "Entrevistadores" },
   { id: "devices", label: "Aparelhos" },
+  { id: "events", label: "Marcos da campanha" },
   { id: "places", label: "Estratos, bairros e pontos", adminOnly: true },
   { id: "members", label: "Usuários do painel", adminOnly: true },
 ];
@@ -40,6 +42,7 @@ export function Manage({ campaign }: { campaign: CampaignAccess }) {
       </div>
       {section === "interviewers" && <Interviewers base={base} />}
       {section === "devices" && <Devices base={base} />}
+      {section === "events" && <Events base={base} />}
       {section === "places" && isAdmin && <PlacesSection base={base} />}
       {section === "members" && isAdmin && <Members base={base} />}
     </>
@@ -269,6 +272,87 @@ function deviceState(d: ManagedDevice): string {
   if (d.awaiting_enrollment) return "Aguardando cadastro no app";
   if (d.revoked_at) return "Revogado";
   return "Sem código válido";
+}
+
+// --- marcos da campanha (D29) ---
+
+function Events({ base }: { base: string }) {
+  const { data, error: loadError, reload } = usePoll<CampaignEventItem[]>(`${base}/events`, 0);
+  const { busy, error, run } = useAction(reload);
+  const [form, setForm] = useState({ day: new Date().toLocaleDateString("sv-SE"), title: "", note: "" });
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    if (await run(() => api.post(`${base}/events`, { ...form, note: form.note || null })))
+      setForm({ ...form, title: "", note: "" });
+  };
+  const remove = (ev: CampaignEventItem) => {
+    if (!window.confirm(`Tirar o marco “${ev.title}” (${new Date(`${ev.day}T12:00`).toLocaleDateString("pt-BR")})?`)) return;
+    run(() => api.post(`${base}/events/${ev.id}/remove`));
+  };
+
+  if (loadError) return <p className="error">{loadError}</p>;
+  if (!data) return <p>Carregando…</p>;
+  return (
+    <>
+      <p className="muted">
+        Acontecimentos que podem mexer na opinião: inauguração, debate, denúncia, chuva forte. Aparecem numerados no
+        gráfico de evolução do cliente, para ligar resultado a acontecimento. Escreva como o cliente vai ler.
+      </p>
+      <form className="row card form" onSubmit={add}>
+        <input type="date" value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })} required />
+        <input
+          placeholder="O que aconteceu (ex.: Inauguração do hospital)"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          required
+          minLength={2}
+          maxLength={80}
+        />
+        <input
+          placeholder="Detalhe (opcional)"
+          value={form.note}
+          onChange={(e) => setForm({ ...form, note: e.target.value })}
+          maxLength={500}
+        />
+        <button className="primary" disabled={busy}>
+          Adicionar marco
+        </button>
+      </form>
+      {error && <p className="error">{error}</p>}
+      {data.length === 0 ? (
+        <p className="muted">Nenhum marco ainda.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Dia</th>
+              <th>Marco</th>
+              <th>Quem registrou</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((ev) => (
+              <tr key={ev.id}>
+                <td>{new Date(`${ev.day}T12:00`).toLocaleDateString("pt-BR")}</td>
+                <td>
+                  <strong>{ev.title}</strong>
+                  {ev.note && <div className="muted small">{ev.note}</div>}
+                </td>
+                <td className="muted small">{ev.created_by}</td>
+                <td>
+                  <button className="danger" disabled={busy} onClick={() => remove(ev)}>
+                    Tirar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
+  );
 }
 
 // --- estratos, bairros e pontos ---

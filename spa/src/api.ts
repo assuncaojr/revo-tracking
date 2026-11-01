@@ -286,6 +286,7 @@ export interface Overview {
   grid: { key: string; text: string; options: QOption[]; rows: GridRow[] } | null;
   balances: Balance[];
   headlines: Headline[];
+  events: CampaignEventItem[];
   today_n: number;
   last_at: string | null;
 }
@@ -437,4 +438,36 @@ export interface CoverageMap {
     far: boolean;
   }[];
   points: { id: string; name: string; lat: number; lng: number; kind: string }[];
+}
+
+// --- marcos, método e boletim (D29) ---
+
+export interface CampaignEventItem {
+  id?: number;
+  day: string;
+  title: string;
+  note: string | null;
+  created_by?: string;
+}
+
+export interface Method {
+  first_day: string | null;
+  last_day: string | null;
+  field_days: number;
+  approached: number;
+  complete: number;
+  refused: number;
+  screened_out: number;
+  abandoned: number;
+  excluded: number;
+  reviewed: number;
+  pending_review: number;
+  interviewers: number;
+  neighborhoods: number;
+  neighborhoods_total: number;
+  with_location_pct: number | null;
+  median_duration_s: number | null;
+  min_cell: number;
+  questionnaire: { title: string; version: number; approved_by: string | null; approved_at: string | null } | null;
+  weighted: boolean;
 }
