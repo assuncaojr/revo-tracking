@@ -10,7 +10,7 @@ from pathlib import Path
 
 from cryptography.fernet import Fernet
 
-from tracking_api import admin, web_auth
+from tracking_api import admin, demo, web_auth
 from tracking_api.config import settings
 from tracking_api.db import session_factory
 
@@ -47,6 +47,13 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--email", required=True)
     sp.add_argument("--name", required=True)
     sp.add_argument("--role", required=True, help="admin | supervisor | analyst | client_coord | client_reader")
+
+    sp = sub.add_parser("seed-demo", help="entrevistas aleatórias (aparelhos DEMO-*) para ver o painel com volume")
+    sp.add_argument("--campaign", type=uuid.UUID, required=True)
+    sp.add_argument("--days", type=int, default=10)
+    sp.add_argument("--per-day", type=int, default=70, help="entrevistas completas por dia, aproximado")
+    sp.add_argument("--seed", type=int)
+    sp.add_argument("--clear", action="store_true", help="apaga os dados de demonstração em vez de criar")
 
     sp = sub.add_parser("questionnaire-load")
     sp.add_argument("--campaign", type=uuid.UUID, required=True)
@@ -92,6 +99,11 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  ou link: {web_auth.totp_uri(secret, user.email)}")
                 else:
                     print("usuário já existia: papel acrescentado, autenticador continua o mesmo")
+            elif a.cmd == "seed-demo" and a.clear:
+                print(f"apagadas {demo.clear(s, a.campaign)} entrevistas de demonstração")
+            elif a.cmd == "seed-demo":
+                totals = demo.seed(s, a.campaign, a.days, a.per_day, a.seed)
+                print("entrevistas de demonstração: " + ", ".join(f"{k} {v}" for k, v in sorted(totals.items())))
             elif a.cmd == "questionnaire-load":
                 qv = admin.load_questionnaire(s, a.campaign, json.loads(a.file.read_text(encoding="utf-8")))
                 print(f"versão: {qv.id} (aguarda aprovação)")
