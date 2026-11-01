@@ -88,12 +88,18 @@ export function Segmented<T extends string>({
 }
 
 /** Legenda de cores dos dados. */
-export function Legend({ items, className }: { items: { color: string; label: ReactNode }[]; className?: string }) {
+export function Legend({
+  items,
+  className,
+}: {
+  items: { color: string; label: ReactNode; outline?: string }[];
+  className?: string;
+}) {
   return (
     <div className={cn("legend text-muted-foreground", className)}>
       {items.map((it, k) => (
         <span key={k}>
-          <i style={{ background: it.color }} /> {it.label}
+          <i style={{ background: it.color, outline: it.outline ? `1px solid ${it.outline}` : undefined }} /> {it.label}
         </span>
       ))}
     </div>

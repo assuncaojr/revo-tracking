@@ -113,3 +113,18 @@ svg .mark text { fill: #fff; font-size: 11px; font-weight: 700; }
 .marks li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: baseline; }
 .mark-n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--foreground); color: #fff; font-size: 11px; font-weight: 700; }
 .highlights li i { width: 10px; height: 10px; border-radius: 50%; }
+
+/* Lista de bairros e áreas (D28) */
+.hood-row { display: grid; grid-template-columns: 220px 1fr 150px; gap: 14px; align-items: center; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--grid-line); border-radius: 0; padding: 10px 16px; background: none; cursor: pointer; }
+.hood-row:hover { background: var(--background); }
+.hood-row:last-child { border-bottom: 0; }
+.hood-name { display: grid; gap: 2px; }
+.hood-value { display: grid; gap: 1px; text-align: right; }
+.hood-value strong { font-size: 17px; }
+.area-row { display: grid; grid-template-columns: 1fr 90px 110px; gap: 10px; align-items: center; font-size: 14px; padding: 3px 0; }
+@media (max-width: 640px) {
+  .hood-row { grid-template-columns: 1fr auto; grid-template-areas: "name value" "track track"; row-gap: 8px; padding: 10px 12px; }
+  .hood-name { grid-area: name; }
+  .hood-value { grid-area: value; }
+  .area-row { grid-template-columns: 1fr 60px 92px; font-size: 13px; }
+}

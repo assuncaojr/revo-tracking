@@ -4,6 +4,13 @@ import { useShowMargins } from "../prefs";
 import { usePoll } from "../usePoll";
 import { MapView } from "./MapView";
 import { Balances, fmt, Headlines, margin } from "./Overview";
+import { ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Segmented, SelectField } from "@/components/controls";
+import { ChartCard, EmptyState, ErrorState, LoadingState, Notice, PageHeader, Toolbar } from "@/components/page";
 
 const FAV = "var(--fav)";
 const UNFAV = "var(--unfav)";
@@ -16,17 +23,17 @@ export function Neighborhoods({ campaign }: { campaign: CampaignAccess }) {
   if (selected) return <HoodSheet campaignId={campaign.id} id={selected} onBack={() => setSelected(null)} />;
   return (
     <>
-      <div className="row between wrap page-head">
-        <h2>Bairros</h2>
-        <div className="segmented">
-          <button className={view === "list" ? "active" : ""} onClick={() => setView("list")}>
-            Lista
-          </button>
-          <button className={view === "map" ? "active" : ""} onClick={() => setView("map")}>
-            Mapa
-          </button>
-        </div>
-      </div>
+      <PageHeader title="Bairros">
+        <Segmented
+          value={view}
+          onChange={setView}
+          size="sm"
+          options={[
+            { value: "list", label: "Lista" },
+            { value: "map", label: "Mapa" },
+          ]}
+        />
+      </PageHeader>
       {view === "list" ? <HoodList campaignId={campaign.id} onOpen={setSelected} /> : <MapView campaign={campaign} />}
     </>
   );
@@ -35,10 +42,10 @@ export function Neighborhoods({ campaign }: { campaign: CampaignAccess }) {
 function HoodList({ campaignId, onOpen }: { campaignId: string; onOpen: (id: string) => void }) {
   const [indicator, setIndicator] = useState("approval");
   const { data, error } = usePoll<HoodsData>(`/api/campaigns/${campaignId}/results/neighborhoods?period=all`, 5 * 60_000);
-  if (error) return <p className="error">{error}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (error) return <ErrorState>{error}</ErrorState>;
+  if (!data) return <LoadingState />;
   const meta = data.indicators.find((i) => i.key === indicator) ?? data.indicators[0];
-  if (!meta) return <p className="muted">Esta campanha ainda não tem indicadores configurados.</p>;
+  if (!meta) return <EmptyState>Esta campanha ainda não tem indicadores configurados.</EmptyState>;
   const city = data.city[meta.key];
   const max = meta.mean ? 10 : 100;
   const items = [...data.items].sort(
@@ -46,26 +53,23 @@ function HoodList({ campaignId, onOpen }: { campaignId: string; onOpen: (id: str
   );
   return (
     <>
-      <div className="row filters wrap">
-        <label className="row">
-          Ver
-          <select value={meta.key} onChange={(e) => setIndicator(e.target.value)}>
-            {data.indicators.map((i) => (
-              <option key={i.key} value={i.key}>
-                {i.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="muted small">
-          Cidade: <strong>{fmt(city?.value, meta.mean)}</strong> · {data.n} entrevistas, todo o período
+      <Toolbar className="mb-2">
+        <SelectField
+          label="Ver"
+          value={meta.key}
+          onChange={setIndicator}
+          options={data.indicators.map((i) => ({ value: i.key, label: i.label }))}
+        />
+        <span className="text-sm text-muted-foreground">
+          Cidade: <strong className="text-foreground">{fmt(city?.value, meta.mean)}</strong> · {data.n} entrevistas,
+          todo o período
         </span>
-      </div>
-      <p className="muted small">
+      </Toolbar>
+      <p className="mb-3 text-sm text-muted-foreground">
         Bairro onde a entrevista foi feita. A cor só aparece quando o bairro se diferencia da cidade além da margem de
         erro; cinza é “parecido com a cidade”. Toque num bairro para ver a ficha.
       </p>
-      <div className="card hood-list">
+      <Card className="hood-list gap-0 overflow-hidden py-0">
         {items.map((h) => {
           const e = h.indicators[meta.key];
           const color = !e?.differs
@@ -77,7 +81,7 @@ function HoodList({ campaignId, onOpen }: { campaignId: string; onOpen: (id: str
             <button key={h.id} className="hood-row" onClick={() => onOpen(h.id)}>
               <span className="hood-name">
                 <strong>{h.name}</strong>
-                <span className="muted small">
+                <span className="text-sm text-muted-foreground">
                   {h.stratum ?? "—"} · {h.n} entrevistas
                 </span>
               </span>
@@ -89,17 +93,19 @@ function HoodList({ campaignId, onOpen }: { campaignId: string; onOpen: (id: str
                 {e?.value != null ? (
                   <>
                     <strong>{fmt(e.value, meta.mean)}</strong>
-                    <span className="muted small">{verdict(e.differs, e.value, city?.value, meta.favorable)}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {verdict(e.differs, e.value, city?.value, meta.favorable)}
+                    </span>
                   </>
                 ) : (
-                  <span className="muted small">poucas entrevistas</span>
+                  <span className="text-sm text-muted-foreground">poucas entrevistas</span>
                 )}
               </span>
             </button>
           );
         })}
-      </div>
-      <p className="muted small">A linha fina em cada barra marca a cidade.</p>
+      </Card>
+      <p className="mt-3 text-sm text-muted-foreground">A linha fina em cada barra marca a cidade.</p>
     </>
   );
 }
@@ -117,92 +123,95 @@ function HoodSheet({ campaignId, id, onBack }: { campaignId: string; id: string;
   const showMargins = useShowMargins();
   return (
     <>
-      <button className="link back" onClick={onBack}>
-        ← todos os bairros
-      </button>
-      {error && <p className="error">{error}</p>}
+      <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={onBack}>
+        <ArrowLeft />
+        Todos os bairros
+      </Button>
+      {error && <ErrorState>{error}</ErrorState>}
       {!data ? (
-        <p>Carregando…</p>
+        <LoadingState />
       ) : (
         <>
-          <div className="page-head">
-            <h2>{data.name}</h2>
-            <p className="muted small">
-              {data.stratum ? `Estrato ${data.stratum} · ` : ""}
-              {data.n} entrevistas feitas no bairro, todo o período
-            </p>
-          </div>
+          <PageHeader
+            title={data.name}
+            meta={
+              <>
+                {data.stratum ? `Estrato ${data.stratum} · ` : ""}
+                {data.n} entrevistas feitas no bairro, todo o período
+              </>
+            }
+          />
           {data.suppressed ? (
-            <p className="notice">
+            <Notice>
               Ainda poucas entrevistas neste bairro ({data.n} de {data.min_cell} necessárias) para mostrar resultado sem
               risco de engano.
-            </p>
+            </Notice>
           ) : (
             <>
               <Headlines items={data.headlines ?? []} title={`O que se destaca em ${data.name}`} />
-              <div className="card">
-                <h3>Bairro × cidade</h3>
-                <table className="compare">
-                  <thead>
-                    <tr>
-                      <th />
-                      <th className="num">{data.name}</th>
-                      <th className="num">Cidade</th>
-                      <th>Leitura</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <ChartCard title="Bairro × cidade">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead />
+                      <TableHead className="text-right">{data.name}</TableHead>
+                      <TableHead className="text-right">Cidade</TableHead>
+                      <TableHead>Leitura</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {data.indicators!.map((i) => {
                       const good = i.value.value != null && i.city.value != null && (i.value.value > i.city.value) === i.favorable;
                       return (
-                        <tr key={i.key}>
-                          <td>{i.label}</td>
-                          <td className="num">
+                        <TableRow key={i.key} className="hover:bg-transparent">
+                          <TableCell className="whitespace-normal">{i.label}</TableCell>
+                          <TableCell className="text-right tabular-nums">
                             <strong>{fmt(i.value.value, i.mean)}</strong>
-                            {showMargins && <span className="muted small"> {margin(i.value, i.mean)}</span>}
-                          </td>
-                          <td className="num">{fmt(i.city.value, i.mean)}</td>
-                          <td>
+                            {showMargins && <span className="text-xs text-muted-foreground"> {margin(i.value, i.mean)}</span>}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{fmt(i.city.value, i.mean)}</TableCell>
+                          <TableCell className="whitespace-normal">
                             {i.differs ? (
-                              <span className="pill" style={{ background: good ? FAV : UNFAV }}>
+                              <Badge className="whitespace-normal text-white" style={{ background: good ? FAV : UNFAV }}>
                                 {good ? "mais favorável à gestão" : "menos favorável à gestão"}
-                              </span>
+                              </Badge>
                             ) : (
-                              <span className="pill same">como a cidade</span>
+                              <Badge variant="secondary" className="text-muted-foreground">
+                                como a cidade
+                              </Badge>
                             )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </ChartCard>
               <Balances balances={data.balances ?? []} />
-              <div className="two-up">
+              <div className="my-4 grid gap-4 md:grid-cols-2">
                 {data.grid && data.grid.rows.length > 0 && (
-                  <div className="card">
-                    <h3>Áreas: o que mais piorou e o que mais melhorou</h3>
-                    <p className="muted small">{data.grid.text}</p>
+                  <ChartCard className="my-0" title="Áreas: o que mais piorou e o que mais melhorou" description={data.grid.text}>
                     <AreaList title="Mais críticas" rows={data.grid.rows.slice(0, 3)} which="negative" />
                     <AreaList
                       title="Mais bem avaliadas"
                       rows={[...data.grid.rows].reverse().slice(0, 3).filter((r) => r.balance > -100)}
                       which="positive"
                     />
-                  </div>
+                  </ChartCard>
                 )}
                 {data.rankings?.map((rk) => (
-                  <div key={rk.key} className="card">
-                    <h3>{rk.text}</h3>
-                    <ol className="top3">
+                  <ChartCard key={rk.key} className="my-0" title={rk.text}>
+                    <ol className="grid list-decimal gap-2 pl-5 text-[15px]">
                       {rk.items.map((it) => (
                         <li key={it.value}>
-                          <span>{it.label}</span>
-                          <strong>{it.pct != null ? `${Math.round(it.pct)}%` : "—"}</strong>
+                          <span className="flex justify-between gap-3">
+                            <span>{it.label}</span>
+                            <strong className="tabular-nums">{it.pct != null ? `${Math.round(it.pct)}%` : "—"}</strong>
+                          </span>
                         </li>
                       ))}
                     </ol>
-                  </div>
+                  </ChartCard>
                 ))}
               </div>
             </>
@@ -223,15 +232,15 @@ function AreaList({
   which: "positive" | "negative";
 }) {
   return (
-    <div className="area-list">
-      <h4>{title}</h4>
+    <div className="mt-3 first:mt-0">
+      <h4 className="mb-1.5 text-sm font-medium text-muted-foreground">{title}</h4>
       {rows.map((r) => (
         <div key={r.value} className="area-row">
           <span>{r.label}</span>
           <span className="area-track">
             <span style={{ width: `${r[which]}%`, background: which === "negative" ? UNFAV : FAV }} />
           </span>
-          <span className="small">
+          <span className="text-sm">
             <strong>{Math.round(r[which])}%</strong> {which === "negative" ? "piorou" : "melhorou"}
           </span>
         </div>

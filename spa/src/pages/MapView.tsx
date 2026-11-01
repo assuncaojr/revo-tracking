@@ -6,6 +6,10 @@ import { duration, FLAG_LABELS, STATUS_LABELS, timeOf } from "../format";
 import { usePoll } from "../usePoll";
 import { fmt, margin } from "./Overview";
 import { TONE_COLORS, TONE_LABELS, TONE_ORDER, toneOf } from "../tone";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Legend, Segmented, SelectField } from "@/components/controls";
+import { ChartCard, ErrorState, Toolbar } from "@/components/page";
 
 // Hexágono pintado pela comparação com a média da área inteira (tone.ts): azul = mais favorável à gestão,
 // vermelho = menos, cinza = igual dentro da margem. Leitura direta para quem não é técnico.
@@ -49,14 +53,16 @@ export function MapView({ campaign }: { campaign: CampaignAccess }) {
   return (
     <>
       {campaign.staff && (
-        <div className="segmented small-seg">
-          <button className={mode === "opinion" ? "active" : ""} onClick={() => setMode("opinion")}>
-            Opinião por região
-          </button>
-          <button className={mode === "coverage" ? "active" : ""} onClick={() => setMode("coverage")}>
-            Cobertura do campo (equipe)
-          </button>
-        </div>
+        <Segmented
+          className="mb-4"
+          value={mode}
+          onChange={setMode}
+          size="sm"
+          options={[
+            { value: "opinion", label: "Opinião por região" },
+            { value: "coverage", label: "Cobertura do campo (equipe)" },
+          ]}
+        />
       )}
       {mode === "opinion" ? (
         <Opinion campaign={campaign} />
@@ -109,66 +115,62 @@ function Opinion({ campaign }: { campaign: CampaignAccess }) {
 
   return (
     <>
-      <div className="row filters">
-        <label className="row">
-          Indicador
-          <select value={indicator} onChange={(e) => setIndicator(e.target.value)}>
-            {(data?.indicators ?? []).map((i) => (
-              <option key={i.key} value={i.key}>
-                {i.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="row">
-          Período
-          <select value={period} onChange={(e) => setPeriod(e.target.value as "7d" | "all")}>
-            <option value="all">Todo o período</option>
-            <option value="7d">Últimos 7 dias</option>
-          </select>
-        </label>
-        <label className="row">
-          Tamanho da região
-          <select value={size ?? data?.size_m ?? ""} onChange={(e) => setSize(Number(e.target.value))}>
-            {(data?.sizes ?? [300, 500, 800, 1200]).map((s) => (
-              <option key={s} value={s}>
-                {s < 1000 ? `${s} m` : `${(s / 1000).toLocaleString("pt-BR")} km`}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {error && <p className="error">{error}</p>}
-      <div className="card chart-card">
-        <h3>{data?.indicator.label ?? "…"} por região</h3>
-        <p className="muted small">
-          Cada hexágono junta as entrevistas feitas naquela área
-          {data && ` (${data.n_located} de ${data.n} com localização boa)`}. Passe o mouse para ver o valor, a margem e o
-          número de entrevistas.
-          {data && ` Hexágonos com menos de ${data.min_cell} entrevistas ficam em cinza, sem valor.`}{" "}
-          Áreas maiores juntam mais entrevistas e escondem menos.
-        </p>
+      <Toolbar>
+        <SelectField
+          label="Indicador"
+          value={indicator}
+          onChange={setIndicator}
+          options={(data?.indicators ?? []).map((i) => ({ value: i.key, label: i.label }))}
+        />
+        <SelectField
+          label="Período"
+          value={period}
+          onChange={setPeriod}
+          options={[
+            { value: "all", label: "Todo o período" },
+            { value: "7d", label: "Últimos 7 dias" },
+          ]}
+        />
+        <SelectField
+          label="Tamanho da região"
+          value={String(size ?? data?.size_m ?? 500)}
+          onChange={(v) => setSize(Number(v))}
+          options={(data?.sizes ?? [300, 500, 800, 1200]).map((s) => ({
+            value: String(s),
+            label: s < 1000 ? `${s} m` : `${(s / 1000).toLocaleString("pt-BR")} km`,
+          }))}
+        />
+      </Toolbar>
+      {error && <ErrorState>{error}</ErrorState>}
+      <ChartCard
+        title={`${data?.indicator.label ?? "…"} por região`}
+        description={
+          <>
+            Cada hexágono junta as entrevistas feitas naquela área
+            {data && ` (${data.n_located} de ${data.n} com localização boa)`}. Passe o mouse para ver o valor, a margem
+            e o número de entrevistas.
+            {data && ` Hexágonos com menos de ${data.min_cell} entrevistas ficam em cinza, sem valor.`} Áreas maiores
+            juntam mais entrevistas e escondem menos.
+          </>
+        }
+      >
         <div className="map" ref={el} />
         {data && ref != null && (
-          <div className="legend map-legend">
-            <span className="muted">
-              Comparado com a média da área ({fmt(ref, mean)}):
-            </span>
-            {TONE_ORDER.map((t) => (
-              <span key={t}>
-                <i style={{ background: TONE_COLORS[t] }} /> {TONE_LABELS[t]}
-              </span>
-            ))}
-            <span>
-              <i style={{ background: SUPPRESSED, outline: "1px solid #b9b8b2" }} /> poucas entrevistas
-            </span>
-          </div>
+          <>
+            <p className="mt-3 mb-1.5 text-sm text-muted-foreground">Comparado com a média da área ({fmt(ref, mean)}):</p>
+            <Legend
+              items={[
+                ...TONE_ORDER.map((t) => ({ color: TONE_COLORS[t], label: TONE_LABELS[t] })),
+                { color: SUPPRESSED, label: "poucas entrevistas", outline: "#b9b8b2" },
+              ]}
+            />
+          </>
         )}
-        <p className="muted small">
+        <p className="mt-2 text-sm text-muted-foreground">
           Mostra onde entrevistamos, não a cidade inteira: área sem hexágono é área sem entrevista. Resultado bruto, sem
           ponderação.
         </p>
-      </div>
+      </ChartCard>
     </>
   );
 }
@@ -214,29 +216,29 @@ function Coverage({ campaignId }: { campaignId: string }) {
   );
   return (
     <>
-      <div className="row filters">
-        <label className="row">
-          Dia
-          <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
-        </label>
+      <Toolbar>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="coverage-day" className="text-muted-foreground">
+            Dia
+          </Label>
+          <Input id="coverage-day" type="date" className="w-auto bg-card" value={day} onChange={(e) => setDay(e.target.value)} />
+        </div>
         {data && (
-          <span className="muted small">
+          <span className="text-sm text-muted-foreground">
             {data.total} entrevistas no dia
             {data.without_location > 0 && ` · ${data.without_location} sem localização (não aparecem)`}
             {data.interviews.some((i) => i.far) &&
               ` · ${data.interviews.filter((i) => i.far).length} longe demais da cidade (GPS errado ou aparelho de teste; afaste o zoom para ver)`}
           </span>
         )}
-      </div>
-      {error && <p className="error">{error}</p>}
-      <div className="card chart-card">
-        <h3>Onde a equipe entrevistou</h3>
-        <p className="muted small">
-          Uso interno: cada ponto é uma entrevista. Não mostrar ao cliente (D26). Passe o mouse para ver quem, quando e
-          os alertas.
-        </p>
+      </Toolbar>
+      {error && <ErrorState>{error}</ErrorState>}
+      <ChartCard
+        title="Onde a equipe entrevistou"
+        description="Uso interno: cada ponto é uma entrevista. Não mostrar ao cliente (D26). Passe o mouse para ver quem, quando e os alertas."
+      >
         <div className="map" ref={el} />
-        <div className="legend map-legend">
+        <div className="legend map-legend text-muted-foreground">
           <span>
             <i style={{ background: COMPLETE }} /> Completa
           </span>
@@ -250,7 +252,7 @@ function Coverage({ campaignId }: { campaignId: string }) {
             <i className="ring-swatch" style={{ borderColor: "#1d2330" }} /> Ponto de trabalho
           </span>
         </div>
-      </div>
+      </ChartCard>
     </>
   );
 }
