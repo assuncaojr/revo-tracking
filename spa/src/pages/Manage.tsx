@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import QRCode from "qrcode";
 import {
   api,
@@ -14,6 +14,17 @@ import {
 } from "../api";
 import { ago, ROLE_LABELS } from "../format";
 import { usePoll } from "../usePoll";
+import { toast } from "sonner";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Segmented, SelectField } from "@/components/controls";
+import { confirmDialog, promptDialog } from "@/components/dialogs";
+import { EmptyState, ErrorState, LoadingState, Notice, PageHeader } from "@/components/page";
+import { cn } from "@/lib/utils";
 
 type Section = "interviewers" | "devices" | "events" | "places" | "members";
 
@@ -33,13 +44,14 @@ export function Manage({ campaign }: { campaign: CampaignAccess }) {
   const base = `/api/campaigns/${campaign.id}/manage`;
   return (
     <>
-      <div className="row subnav">
-        {sections.map((s) => (
-          <button key={s.id} className={s.id === section ? "active" : ""} onClick={() => setSection(s.id)}>
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <PageHeader title="Cadastros" />
+      <Segmented
+        className="mb-4"
+        value={section}
+        onChange={setSection}
+        size="sm"
+        options={sections.map((s) => ({ value: s.id, label: s.label }))}
+      />
       {section === "interviewers" && <Interviewers base={base} />}
       {section === "devices" && <Devices base={base} />}
       {section === "events" && <Events base={base} />}
@@ -49,24 +61,70 @@ export function Manage({ campaign }: { campaign: CampaignAccess }) {
   );
 }
 
-/** Executa uma ação, mostra o erro do núcleo e recarrega a lista. */
+/** Executa uma ação, avisa o resultado (toast), mostra o erro do núcleo e recarrega a lista. */
 function useAction(reload: () => Promise<void>) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const run = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
+  const run = async <T,>(fn: () => Promise<T>, done?: string): Promise<T | undefined> => {
     setBusy(true);
     setError(null);
     try {
       const r = await fn();
       await reload();
+      if (done) toast.success(done);
       return r;
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : String(e));
+      const msg = e instanceof ApiError ? e.message : String(e);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
   };
   return { busy, error, run };
+}
+
+/** Explicação curta no topo de cada seção. */
+function Intro({ children }: { children: ReactNode }) {
+  return <p className="mb-4 max-w-3xl text-sm text-muted-foreground">{children}</p>;
+}
+
+/** Formulário de cadastro em linha: campos e botão, quebrando no celular. */
+function AddForm({ onSubmit, children }: { onSubmit: (e: FormEvent) => void; children: ReactNode }) {
+  return (
+    <Card className="mb-4 px-4 py-4">
+      <form className="flex flex-wrap items-center gap-2 [&>input]:w-auto [&>input]:min-w-44 [&>input]:flex-1 sm:[&>input]:w-60 sm:[&>input]:flex-none" onSubmit={onSubmit}>
+        {children}
+      </form>
+    </Card>
+  );
+}
+
+/** Tabela dentro de um card, com respiro nas bordas. */
+function TableCard({ children }: { children: ReactNode }) {
+  return (
+    <Card className="py-0 [&_td:first-child]:pl-4 [&_td:last-child]:pr-4 [&_th:first-child]:pl-4 [&_th:last-child]:pr-4">
+      <Table>{children}</Table>
+    </Card>
+  );
+}
+
+const DANGER = "text-destructive hover:text-destructive";
+
+/** Segredo mostrado uma vez só (código do aparelho, senha provisória): destacado e com botão de fechar. */
+function SecretCard({ title, onClose, closeLabel, children }: { title: React.ReactNode; onClose: () => void; closeLabel: string; children: ReactNode }) {
+  return (
+    <Card className="mb-4 gap-3 border-amber-300 bg-amber-50 px-4 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <span>{title}</span>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <X />
+          {closeLabel}
+        </Button>
+      </div>
+      {children}
+    </Card>
+  );
 }
 
 // --- entrevistadores ---
@@ -79,25 +137,40 @@ function Interviewers({ base }: { base: string }) {
 
   const add = async (e: FormEvent) => {
     e.preventDefault();
-    const ok = await run(() => api.post(`${base}/interviewers`, { name, pin }));
+    const ok = await run(() => api.post(`${base}/interviewers`, { name, pin }), "Entrevistador cadastrado");
     if (ok) {
       setName("");
       setPin("");
     }
   };
-  const update = (i: ManagedInterviewer, body: object) => run(() => api.post(`${base}/interviewers/${i.id}`, body));
+  const update = (i: ManagedInterviewer, body: object, done: string) =>
+    run(() => api.post(`${base}/interviewers/${i.id}`, body), done);
+  const rename = async (i: ManagedInterviewer) => {
+    const n = await promptDialog({ title: `Renomear ${i.name}`, label: "Nome", defaultValue: i.name });
+    if (n && n !== i.name) update(i, { name: n }, "Nome atualizado");
+  };
+  const newPin = async (i: ManagedInterviewer) => {
+    const p = await promptDialog({
+      title: `Novo PIN de ${i.name}`,
+      description: "O aparelho passa a pedir o PIN novo na próxima vez que abrir com internet.",
+      label: "PIN (4 a 8 dígitos)",
+      inputMode: "numeric",
+      validate: (v) => (/^\d{4,8}$/.test(v) ? null : "Use de 4 a 8 dígitos."),
+    });
+    if (p) update(i, { pin: p }, "PIN trocado");
+  };
 
-  if (loadError) return <p className="error">{loadError}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (loadError) return <ErrorState>{loadError}</ErrorState>;
+  if (!data) return <LoadingState />;
   return (
     <>
-      <p className="muted">
+      <Intro>
         O aparelho recebe novos nomes, PINs e desativações na próxima vez que o app abrir com internet. O PIN é pessoal:
         entregue em particular.
-      </p>
-      <form className="row card form" onSubmit={add}>
-        <input placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />
-        <input
+      </Intro>
+      <AddForm onSubmit={add}>
+        <Input placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />
+        <Input
           placeholder="PIN (4 a 8 dígitos)"
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
@@ -106,61 +179,49 @@ function Interviewers({ base }: { base: string }) {
           minLength={4}
           maxLength={8}
         />
-        <button className="primary" disabled={busy}>
-          Cadastrar entrevistador
-        </button>
-      </form>
-      {error && <p className="error">{error}</p>}
-      <table>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Situação</th>
-            <th className="num">Completas</th>
-            <th>Última entrevista</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
+        <Button disabled={busy}>Cadastrar entrevistador</Button>
+      </AddForm>
+      {error && <ErrorState>{error}</ErrorState>}
+      <TableCard>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>Situação</TableHead>
+            <TableHead className="text-right">Completas</TableHead>
+            <TableHead>Última entrevista</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data.map((i) => (
-            <tr key={i.id} className={i.active ? "" : "inactive"}>
-              <td>{i.name}</td>
-              <td>{i.active ? "Ativo" : "Desativado"}</td>
-              <td className="num">{i.complete}</td>
-              <td>{i.last_at ? ago(i.last_at) : "—"}</td>
-              <td>
-                <div className="row">
-                  <button
-                    disabled={busy}
-                    onClick={() => {
-                      const n = window.prompt("Nome:", i.name);
-                      if (n && n.trim() !== i.name) update(i, { name: n.trim() });
-                    }}
-                  >
+            <TableRow key={i.id} className={cn(!i.active && "text-muted-foreground")}>
+              <TableCell className="font-medium">{i.name}</TableCell>
+              <TableCell>{i.active ? "Ativo" : "Desativado"}</TableCell>
+              <TableCell className="text-right tabular-nums">{i.complete}</TableCell>
+              <TableCell>{i.last_at ? ago(i.last_at) : "—"}</TableCell>
+              <TableCell>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" disabled={busy} onClick={() => rename(i)}>
                     Renomear
-                  </button>
-                  <button
-                    disabled={busy}
-                    onClick={() => {
-                      const p = window.prompt(`Novo PIN de ${i.name} (4 a 8 dígitos):`);
-                      if (p) update(i, { pin: p.trim() });
-                    }}
-                  >
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={busy} onClick={() => newPin(i)}>
                     Novo PIN
-                  </button>
-                  <button
-                    className={i.active ? "danger" : ""}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(i.active && DANGER)}
                     disabled={busy}
-                    onClick={() => update(i, { active: !i.active })}
+                    onClick={() => update(i, { active: !i.active }, i.active ? "Entrevistador desativado" : "Entrevistador reativado")}
                   >
                     {i.active ? "Desativar" : "Reativar"}
-                  </button>
+                  </Button>
                 </div>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </TableCard>
     </>
   );
 }
@@ -175,94 +236,101 @@ function Devices({ base }: { base: string }) {
 
   const add = async (e: FormEvent) => {
     e.preventDefault();
-    const r = await run(() => api.post<{ code: string; valid_hours: number }>(`${base}/devices`, { label }));
+    const r = await run(() => api.post<{ code: string; valid_hours: number }>(`${base}/devices`, { label }), "Aparelho cadastrado");
     if (r) {
       setCode({ label, code: r.code, hours: r.valid_hours });
       setLabel("");
     }
   };
   const newCode = async (d: ManagedDevice) => {
-    const msg = d.active
-      ? `Gerar novo código para ${d.label}? O aparelho deixa de enviar até ser cadastrado de novo com ele (a fila dele é mantida).`
-      : `Gerar código de cadastro para ${d.label}?`;
-    if (!window.confirm(msg)) return;
+    const ok = await confirmDialog({
+      title: d.active ? `Gerar novo código para ${d.label}?` : `Gerar código de cadastro para ${d.label}?`,
+      description: d.active
+        ? "O aparelho deixa de enviar até ser cadastrado de novo com ele (a fila dele é mantida)."
+        : undefined,
+      action: "Gerar código",
+    });
+    if (!ok) return;
     const r = await run(() => api.post<{ code: string; valid_hours: number }>(`${base}/devices/${d.id}/code`));
     if (r) setCode({ label: d.label, code: r.code, hours: r.valid_hours });
   };
-  const revoke = (d: ManagedDevice) => {
-    if (!window.confirm(`Revogar ${d.label}? Ele para de receber questionário e de enviar entrevistas na hora.`)) return;
-    run(() => api.post(`${base}/devices/${d.id}/revoke`));
+  const revoke = async (d: ManagedDevice) => {
+    const ok = await confirmDialog({
+      title: `Revogar ${d.label}?`,
+      description: "Ele para de receber questionário e de enviar entrevistas na hora.",
+      action: "Revogar",
+      destructive: true,
+    });
+    if (ok) run(() => api.post(`${base}/devices/${d.id}/revoke`), "Aparelho revogado");
   };
 
-  if (loadError) return <p className="error">{loadError}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (loadError) return <ErrorState>{loadError}</ErrorState>;
+  if (!data) return <LoadingState />;
   return (
     <>
-      <p className="muted">
+      <Intro>
         Cadastre o aparelho aqui e digite o código no app, na primeira tela. Perdeu ou trocou o aparelho? Revogue. O
         código novo mantém o mesmo aparelho, então as entrevistas que estiverem na fila dele continuam valendo.
-      </p>
-      <form className="row card form" onSubmit={add}>
-        <input placeholder="Etiqueta (ex.: A14-03)" value={label} onChange={(e) => setLabel(e.target.value)} required minLength={2} />
-        <button className="primary" disabled={busy}>
-          Cadastrar aparelho
-        </button>
-      </form>
+      </Intro>
+      <AddForm onSubmit={add}>
+        <Input placeholder="Etiqueta (ex.: A14-03)" value={label} onChange={(e) => setLabel(e.target.value)} required minLength={2} />
+        <Button disabled={busy}>Cadastrar aparelho</Button>
+      </AddForm>
       {code && (
-        <div className="card secret">
-          <div className="row between">
-            <span>
+        <SecretCard
+          title={
+            <>
               Código de cadastro de <strong>{code.label}</strong> (vale {code.hours} h, uma vez):
-            </span>
-            <button className="link" onClick={() => setCode(null)}>
-              Fechar
-            </button>
-          </div>
-          <div className="code">{code.code}</div>
-          <p className="muted small">Ele não aparece de novo. Se fechar antes de usar, gere outro.</p>
-        </div>
+            </>
+          }
+          closeLabel="Fechar"
+          onClose={() => setCode(null)}
+        >
+          <div className="font-mono text-2xl tracking-widest select-all">{code.code}</div>
+          <p className="text-sm text-muted-foreground">Ele não aparece de novo. Se fechar antes de usar, gere outro.</p>
+        </SecretCard>
       )}
-      {error && <p className="error">{error}</p>}
-      <table>
-        <thead>
-          <tr>
-            <th>Aparelho</th>
-            <th>Situação</th>
-            <th>Último contato</th>
-            <th className="num">Na fila</th>
-            <th className="num">Bateria</th>
-            <th>App</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
+      {error && <ErrorState>{error}</ErrorState>}
+      <TableCard>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Aparelho</TableHead>
+            <TableHead>Situação</TableHead>
+            <TableHead>Último contato</TableHead>
+            <TableHead className="text-right">Na fila</TableHead>
+            <TableHead className="text-right">Bateria</TableHead>
+            <TableHead>App</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data.map((d) => (
-            <tr key={d.id} className={d.revoked_at ? "inactive" : ""}>
-              <td>
-                <strong>{d.label}</strong>
-                {d.model && <div className="muted small">{d.model}</div>}
-              </td>
-              <td>{deviceState(d)}</td>
-              <td>{ago(d.last_seen_at)}</td>
-              <td className="num">{d.pending_count ?? "—"}</td>
-              <td className="num">{d.battery_pct != null ? `${d.battery_pct}%` : "—"}</td>
-              <td>{d.app_version ?? "—"}</td>
-              <td>
-                <div className="row">
-                  <button disabled={busy} onClick={() => newCode(d)}>
+            <TableRow key={d.id} className={cn(d.revoked_at && "text-muted-foreground")}>
+              <TableCell>
+                <div className="font-medium">{d.label}</div>
+                {d.model && <div className="text-xs text-muted-foreground">{d.model}</div>}
+              </TableCell>
+              <TableCell>{deviceState(d)}</TableCell>
+              <TableCell>{ago(d.last_seen_at)}</TableCell>
+              <TableCell className="text-right tabular-nums">{d.pending_count ?? "—"}</TableCell>
+              <TableCell className="text-right tabular-nums">{d.battery_pct != null ? `${d.battery_pct}%` : "—"}</TableCell>
+              <TableCell>{d.app_version ?? "—"}</TableCell>
+              <TableCell>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" disabled={busy} onClick={() => newCode(d)}>
                     Novo código
-                  </button>
+                  </Button>
                   {!d.revoked_at && (
-                    <button className="danger" disabled={busy} onClick={() => revoke(d)}>
+                    <Button variant="outline" size="sm" className={DANGER} disabled={busy} onClick={() => revoke(d)}>
                       Revogar
-                    </button>
+                    </Button>
                   )}
                 </div>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </TableCard>
     </>
   );
 }
@@ -283,73 +351,79 @@ function Events({ base }: { base: string }) {
 
   const add = async (e: FormEvent) => {
     e.preventDefault();
-    if (await run(() => api.post(`${base}/events`, { ...form, note: form.note || null })))
+    if (await run(() => api.post(`${base}/events`, { ...form, note: form.note || null }), "Marco adicionado"))
       setForm({ ...form, title: "", note: "" });
   };
-  const remove = (ev: CampaignEventItem) => {
-    if (!window.confirm(`Tirar o marco “${ev.title}” (${new Date(`${ev.day}T12:00`).toLocaleDateString("pt-BR")})?`)) return;
-    run(() => api.post(`${base}/events/${ev.id}/remove`));
+  const remove = async (ev: CampaignEventItem) => {
+    const ok = await confirmDialog({
+      title: `Tirar o marco “${ev.title}”?`,
+      description: `Do dia ${new Date(`${ev.day}T12:00`).toLocaleDateString("pt-BR")}. Ele sai do gráfico do cliente.`,
+      action: "Tirar",
+      destructive: true,
+    });
+    if (ok) run(() => api.post(`${base}/events/${ev.id}/remove`), "Marco retirado");
   };
 
-  if (loadError) return <p className="error">{loadError}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (loadError) return <ErrorState>{loadError}</ErrorState>;
+  if (!data) return <LoadingState />;
   return (
     <>
-      <p className="muted">
+      <Intro>
         Acontecimentos que podem mexer na opinião: inauguração, debate, denúncia, chuva forte. Aparecem numerados no
         gráfico de evolução do cliente, para ligar resultado a acontecimento. Escreva como o cliente vai ler.
-      </p>
-      <form className="row card form" onSubmit={add}>
-        <input type="date" value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })} required />
-        <input
+      </Intro>
+      <AddForm onSubmit={add}>
+        <Input type="date" className="w-auto" value={form.day} onChange={(e) => setForm({ ...form, day: e.target.value })} required />
+        <Input
           placeholder="O que aconteceu (ex.: Inauguração do hospital)"
+          className="sm:min-w-80"
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           required
           minLength={2}
           maxLength={80}
         />
-        <input
+        <Input
           placeholder="Detalhe (opcional)"
           value={form.note}
           onChange={(e) => setForm({ ...form, note: e.target.value })}
           maxLength={500}
         />
-        <button className="primary" disabled={busy}>
-          Adicionar marco
-        </button>
-      </form>
-      {error && <p className="error">{error}</p>}
+        <Button disabled={busy}>Adicionar marco</Button>
+      </AddForm>
+      {error && <ErrorState>{error}</ErrorState>}
       {data.length === 0 ? (
-        <p className="muted">Nenhum marco ainda.</p>
+        <EmptyState>Nenhum marco ainda.</EmptyState>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Dia</th>
-              <th>Marco</th>
-              <th>Quem registrou</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
+        <TableCard>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Dia</TableHead>
+              <TableHead>Marco</TableHead>
+              <TableHead>Quem registrou</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {data.map((ev) => (
-              <tr key={ev.id}>
-                <td>{new Date(`${ev.day}T12:00`).toLocaleDateString("pt-BR")}</td>
-                <td>
-                  <strong>{ev.title}</strong>
-                  {ev.note && <div className="muted small">{ev.note}</div>}
-                </td>
-                <td className="muted small">{ev.created_by}</td>
-                <td>
-                  <button className="danger" disabled={busy} onClick={() => remove(ev)}>
-                    Tirar
-                  </button>
-                </td>
-              </tr>
+              <TableRow key={ev.id}>
+                <TableCell className="tabular-nums">{new Date(`${ev.day}T12:00`).toLocaleDateString("pt-BR")}</TableCell>
+                <TableCell className="whitespace-normal">
+                  <div className="font-medium">{ev.title}</div>
+                  {ev.note && <div className="text-xs text-muted-foreground">{ev.note}</div>}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">{ev.created_by}</TableCell>
+                <TableCell>
+                  <div className="flex justify-end">
+                    <Button variant="outline" size="sm" className={DANGER} disabled={busy} onClick={() => remove(ev)}>
+                      Tirar
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </TableCard>
       )}
     </>
   );
@@ -363,79 +437,89 @@ function PlacesSection({ base }: { base: string }) {
   const [stratum, setStratum] = useState({ name: "", target: "" });
   const [hood, setHood] = useState({ name: "", stratum_id: "" });
 
-  if (loadError) return <p className="error">{loadError}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (loadError) return <ErrorState>{loadError}</ErrorState>;
+  if (!data) return <LoadingState />;
 
   const target = (v: string) => (v === "" ? null : Number(v));
   const addStratum = async (e: FormEvent) => {
     e.preventDefault();
-    if (await run(() => api.post(`${base}/strata`, { name: stratum.name, daily_target: target(stratum.target) })))
+    if (await run(() => api.post(`${base}/strata`, { name: stratum.name, daily_target: target(stratum.target) }), "Estrato adicionado"))
       setStratum({ name: "", target: "" });
   };
   const addHood = async (e: FormEvent) => {
     e.preventDefault();
-    if (await run(() => api.post(`${base}/neighborhoods`, { name: hood.name, stratum_id: hood.stratum_id || null })))
+    if (await run(() => api.post(`${base}/neighborhoods`, { name: hood.name, stratum_id: hood.stratum_id || null }), "Bairro adicionado"))
       setHood({ name: "", stratum_id: hood.stratum_id });
   };
   const groups = [...data.strata.map((s) => ({ id: s.id as string | null, name: s.name })), { id: null, name: "Sem estrato" }];
 
   return (
     <>
-      <p className="muted">
+      <Intro>
         Estrato é o grupo de bairros que tem meta diária e aparece separado nos resultados. Ponto é onde o entrevistador
         trabalha; o app mostra só os ativos. Coordenadas do ponto ligam o alerta “longe do ponto”.
-      </p>
-      {error && <p className="error">{error}</p>}
+      </Intro>
+      {error && <ErrorState>{error}</ErrorState>}
 
-      <h3>Estratos</h3>
-      <table className="compact">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Meta diária (entrevistas completas)</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
+      <h3 className="mb-3 text-base font-semibold">Estratos</h3>
+      <TableCard>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>Meta diária (entrevistas completas)</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data.strata.map((s) => (
-            <StratumRow key={s.id} s={s} busy={busy} onSave={(body) => run(() => api.post(`${base}/strata/${s.id}`, body))} />
+            <StratumRow
+              key={s.id}
+              s={s}
+              busy={busy}
+              onSave={(body) => run(() => api.post(`${base}/strata/${s.id}`, body), "Estrato salvo")}
+            />
           ))}
-        </tbody>
-      </table>
-      <form className="row card form" onSubmit={addStratum}>
-        <input placeholder="Novo estrato" value={stratum.name} onChange={(e) => setStratum({ ...stratum, name: e.target.value })} required />
-        <input
-          placeholder="Meta diária"
-          type="number"
-          min={0}
-          value={stratum.target}
-          onChange={(e) => setStratum({ ...stratum, target: e.target.value })}
+        </TableBody>
+      </TableCard>
+      <div className="mt-3">
+        <AddForm onSubmit={addStratum}>
+          <Input placeholder="Novo estrato" value={stratum.name} onChange={(e) => setStratum({ ...stratum, name: e.target.value })} required />
+          <Input
+            placeholder="Meta diária"
+            type="number"
+            min={0}
+            value={stratum.target}
+            onChange={(e) => setStratum({ ...stratum, target: e.target.value })}
+          />
+          <Button variant="outline" disabled={busy}>
+            Adicionar estrato
+          </Button>
+        </AddForm>
+      </div>
+
+      <h3 className="mt-8 mb-3 text-base font-semibold">Bairros e pontos</h3>
+      <AddForm onSubmit={addHood}>
+        <Input placeholder="Novo bairro" value={hood.name} onChange={(e) => setHood({ ...hood, name: e.target.value })} required />
+        <SelectField
+          value={hood.stratum_id}
+          onChange={(v) => setHood({ ...hood, stratum_id: v })}
+          options={[{ value: "", label: "Sem estrato" }, ...data.strata.map((s) => ({ value: s.id, label: s.name }))]}
         />
-        <button disabled={busy}>Adicionar estrato</button>
-      </form>
-
-      <h3>Bairros e pontos</h3>
-      <form className="row card form" onSubmit={addHood}>
-        <input placeholder="Novo bairro" value={hood.name} onChange={(e) => setHood({ ...hood, name: e.target.value })} required />
-        <select value={hood.stratum_id} onChange={(e) => setHood({ ...hood, stratum_id: e.target.value })}>
-          <option value="">Sem estrato</option>
-          {data.strata.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <button disabled={busy}>Adicionar bairro</button>
-      </form>
+        <Button variant="outline" disabled={busy}>
+          Adicionar bairro
+        </Button>
+      </AddForm>
       {groups.map((g) => {
         const hoods = data.neighborhoods.filter((n) => n.stratum_id === g.id);
         if (hoods.length === 0) return null;
         return (
-          <section key={g.id ?? "none"}>
-            <h3 className="muted">{g.name}</h3>
-            {hoods.map((n) => (
-              <Neighborhood key={n.id} n={n} data={data} base={base} busy={busy} run={run} />
-            ))}
+          <section key={g.id ?? "none"} className="my-6">
+            <h4 className="mb-2 text-sm font-medium tracking-wide text-muted-foreground uppercase">{g.name}</h4>
+            <div className="grid gap-3">
+              {hoods.map((n) => (
+                <Neighborhood key={n.id} n={n} data={data} base={base} busy={busy} run={run} />
+              ))}
+            </div>
           </section>
         );
       })}
@@ -460,25 +544,25 @@ function StratumRow({
   }, [s]);
   const dirty = name !== s.name || target !== (s.daily_target?.toString() ?? "");
   return (
-    <tr>
-      <td>
-        <input value={name} onChange={(e) => setName(e.target.value)} />
-      </td>
-      <td>
-        <input type="number" min={0} value={target} onChange={(e) => setTarget(e.target.value)} />
-      </td>
-      <td>
+    <TableRow className="hover:bg-transparent">
+      <TableCell>
+        <Input className="h-8" value={name} onChange={(e) => setName(e.target.value)} />
+      </TableCell>
+      <TableCell>
+        <Input className="h-8 w-32" type="number" min={0} value={target} onChange={(e) => setTarget(e.target.value)} />
+      </TableCell>
+      <TableCell className="w-24 text-right">
         {dirty && (
-          <button disabled={busy || !name.trim()} onClick={() => onSave({ name, daily_target: target === "" ? null : Number(target) })}>
+          <Button size="sm" disabled={busy || !name.trim()} onClick={() => onSave({ name, daily_target: target === "" ? null : Number(target) })}>
             Salvar
-          </button>
+          </Button>
         )}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
-type Run = <T>(fn: () => Promise<T>) => Promise<T | undefined>;
+type Run = <T>(fn: () => Promise<T>, done?: string) => Promise<T | undefined>;
 
 function Neighborhood({
   n,
@@ -495,62 +579,78 @@ function Neighborhood({
 }) {
   const points = data.points.filter((p) => p.neighborhood_id === n.id);
   const [newPoint, setNewPoint] = useState("");
-  const rename = () => {
-    const name = window.prompt("Nome do bairro:", n.name);
-    if (name && name.trim() !== n.name) run(() => api.post(`${base}/neighborhoods/${n.id}`, { name: name.trim(), stratum_id: n.stratum_id }));
+  const rename = async () => {
+    const name = await promptDialog({ title: `Renomear ${n.name}`, label: "Nome do bairro", defaultValue: n.name });
+    if (name && name !== n.name)
+      run(() => api.post(`${base}/neighborhoods/${n.id}`, { name, stratum_id: n.stratum_id }), "Bairro renomeado");
   };
-  const move = (stratum_id: string) => {
+  const move = async (stratum_id: string) => {
     const to = data.strata.find((s) => s.id === stratum_id)?.name ?? "sem estrato";
-    if (!window.confirm(`Passar ${n.name} para ${to}? Resultados e progresso por estrato são recalculados com isso, inclusive os dias anteriores.`))
-      return;
-    run(() => api.post(`${base}/neighborhoods/${n.id}`, { name: n.name, stratum_id: stratum_id || null }));
+    const ok = await confirmDialog({
+      title: `Passar ${n.name} para ${to}?`,
+      description: "Resultados e progresso por estrato são recalculados com isso, inclusive os dias anteriores.",
+      action: "Passar",
+    });
+    if (ok) run(() => api.post(`${base}/neighborhoods/${n.id}`, { name: n.name, stratum_id: stratum_id || null }), "Bairro movido");
   };
   const addPoint = async (e: FormEvent) => {
     e.preventDefault();
-    if (await run(() => api.post(`${base}/points`, { neighborhood_id: n.id, name: newPoint, kind: "door" }))) setNewPoint("");
+    if (await run(() => api.post(`${base}/points`, { neighborhood_id: n.id, name: newPoint, kind: "door" }), "Ponto adicionado"))
+      setNewPoint("");
   };
   return (
-    <div className="card hood">
-      <div className="row between">
+    <Card className="gap-3 px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <strong>{n.name}</strong>
-        <div className="row">
-          <select value={n.stratum_id ?? ""} disabled={busy} onChange={(e) => move(e.target.value)}>
-            <option value="">Sem estrato</option>
-            {data.strata.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <button className="link" disabled={busy} onClick={rename}>
+        <div className="flex items-center gap-2">
+          <SelectField
+            value={n.stratum_id ?? ""}
+            onChange={move}
+            className="h-8"
+            options={[{ value: "", label: "Sem estrato" }, ...data.strata.map((s) => ({ value: s.id, label: s.name }))]}
+          />
+          <Button variant="ghost" size="sm" disabled={busy} onClick={rename}>
             Renomear
-          </button>
+          </Button>
         </div>
       </div>
       {points.length > 0 && (
-        <table className="compact">
-          <thead>
-            <tr>
-              <th>Ponto</th>
-              <th>Abordagem</th>
-              <th>Latitude</th>
-              <th>Longitude</th>
-              <th>Ativo</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Ponto</TableHead>
+              <TableHead>Abordagem</TableHead>
+              <TableHead>Latitude</TableHead>
+              <TableHead>Longitude</TableHead>
+              <TableHead>Ativo</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {points.map((p) => (
-              <PointRow key={p.id} p={p} busy={busy} onSave={(body) => run(() => api.post(`${base}/points/${p.id}`, body))} />
+              <PointRow
+                key={p.id}
+                p={p}
+                busy={busy}
+                onSave={(body) => run(() => api.post(`${base}/points/${p.id}`, body), "Ponto salvo")}
+              />
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
-      <form className="row form" onSubmit={addPoint}>
-        <input placeholder="Novo ponto neste bairro" value={newPoint} onChange={(e) => setNewPoint(e.target.value)} required />
-        <button disabled={busy}>Adicionar ponto</button>
+      <form className="flex flex-wrap items-center gap-2" onSubmit={addPoint}>
+        <Input
+          placeholder="Novo ponto neste bairro"
+          className="h-8 max-w-xs"
+          value={newPoint}
+          onChange={(e) => setNewPoint(e.target.value)}
+          required
+        />
+        <Button variant="outline" size="sm" disabled={busy}>
+          Adicionar ponto
+        </Button>
       </form>
-    </div>
+    </Card>
   );
 }
 
@@ -569,36 +669,42 @@ function PointRow({
   const dirty = JSON.stringify(f) !== JSON.stringify(initial());
   const coord = (v: string) => (v.trim() === "" ? null : Number(v.replace(",", ".")));
   return (
-    <tr className={f.active ? "" : "inactive"}>
-      <td>
-        <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
-      </td>
-      <td>
-        <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as "flow" | "door" })}>
-          <option value="door">Porta a porta</option>
-          <option value="flow">Fluxo (rua, feira)</option>
-        </select>
-      </td>
-      <td>
-        <input className="coord" placeholder="latitude" value={f.lat} onChange={(e) => setF({ ...f, lat: e.target.value })} />
-      </td>
-      <td>
-        <input className="coord" placeholder="longitude" value={f.lng} onChange={(e) => setF({ ...f, lng: e.target.value })} />
-      </td>
-      <td>
-        <input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} />
-      </td>
-      <td>
+    <TableRow className={cn("hover:bg-transparent", !f.active && "text-muted-foreground")}>
+      <TableCell>
+        <Input className="h-8 min-w-40" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+      </TableCell>
+      <TableCell>
+        <SelectField
+          value={f.kind}
+          onChange={(v) => setF({ ...f, kind: v })}
+          className="h-8"
+          options={[
+            { value: "door", label: "Porta a porta" },
+            { value: "flow", label: "Fluxo (rua, feira)" },
+          ]}
+        />
+      </TableCell>
+      <TableCell>
+        <Input className="h-8 w-28" placeholder="latitude" value={f.lat} onChange={(e) => setF({ ...f, lat: e.target.value })} />
+      </TableCell>
+      <TableCell>
+        <Input className="h-8 w-28" placeholder="longitude" value={f.lng} onChange={(e) => setF({ ...f, lng: e.target.value })} />
+      </TableCell>
+      <TableCell>
+        <Checkbox checked={f.active} onCheckedChange={(v) => setF({ ...f, active: v === true })} aria-label="Ativo" />
+      </TableCell>
+      <TableCell className="w-24 text-right">
         {dirty && (
-          <button
+          <Button
+            size="sm"
             disabled={busy || !f.name.trim()}
             onClick={() => onSave({ neighborhood_id: p.neighborhood_id, name: f.name, kind: f.kind, lat: coord(f.lat), lng: coord(f.lng), active: f.active })}
           >
             Salvar
-          </button>
+          </Button>
         )}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -624,101 +730,110 @@ function Members({ base }: { base: string }) {
   const add = async (e: FormEvent) => {
     e.preventDefault();
     setNotice(null);
-    const r = await run(() => api.post<{ credentials: Credentials | null }>(`${base}/members`, form));
+    const r = await run(() => api.post<{ credentials: Credentials | null }>(`${base}/members`, form), "Acesso criado");
     if (!r) return;
     if (r.credentials) setCred({ name: form.name, c: r.credentials });
     else setNotice(`${form.email} já tinha conta: entra com a senha e o autenticador de sempre.`);
     setForm({ email: "", name: "", role: form.role });
   };
   const reset = async (m: Member) => {
-    if (!window.confirm(`Gerar senha e autenticador novos para ${m.name}? A senha atual e o autenticador antigo deixam de valer agora.`))
-      return;
-    const r = await run(() => api.post<{ credentials: Credentials }>(`${base}/members/${m.id}/reset`));
+    const ok = await confirmDialog({
+      title: `Gerar senha e autenticador novos para ${m.name}?`,
+      description: "A senha atual e o autenticador antigo deixam de valer agora.",
+      action: "Refazer acesso",
+      destructive: true,
+    });
+    if (!ok) return;
+    const r = await run(() => api.post<{ credentials: Credentials }>(`${base}/members/${m.id}/reset`), "Acesso refeito");
     if (r) setCred({ name: m.name, c: r.credentials });
   };
-  const remove = (m: Member) => {
-    if (!window.confirm(`Tirar ${m.name} desta campanha? O acesso é cortado na hora.`)) return;
-    run(() => api.post(`${base}/members/${m.id}/remove`));
+  const remove = async (m: Member) => {
+    const ok = await confirmDialog({
+      title: `Tirar ${m.name} desta campanha?`,
+      description: "O acesso é cortado na hora.",
+      action: "Tirar da campanha",
+      destructive: true,
+    });
+    if (ok) run(() => api.post(`${base}/members/${m.id}/remove`), "Pessoa retirada da campanha");
   };
-  const changeRole = (m: Member, role: Role) => {
-    if (!window.confirm(`Mudar o papel de ${m.name} para ${ROLE_LABELS[role]}?`)) return;
-    run(() => api.post(`${base}/members/${m.id}/role`, { role }));
+  const changeRole = async (m: Member, role: Role) => {
+    const ok = await confirmDialog({ title: `Mudar o papel de ${m.name} para ${ROLE_LABELS[role]}?`, description: ROLE_HELP[role], action: "Mudar papel" });
+    if (ok) run(() => api.post(`${base}/members/${m.id}/role`, { role }), "Papel alterado");
   };
 
-  if (loadError) return <p className="error">{loadError}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (loadError) return <ErrorState>{loadError}</ErrorState>;
+  if (!data) return <LoadingState />;
   return (
     <>
-      <p className="muted">
+      <Intro>
         Todo acesso pede senha e o código do app autenticador. Pessoa nova recebe uma senha provisória e uma chave para
         o autenticador, mostradas uma vez só: entregue em particular.
-      </p>
-      <form className="row card form" onSubmit={add}>
-        <input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required minLength={2} />
-        <input placeholder="E-mail" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-        <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
-          {ROLES.map((r) => (
-            <option key={r} value={r}>
-              {ROLE_LABELS[r]}
-            </option>
-          ))}
-        </select>
-        <button className="primary" disabled={busy}>
-          Dar acesso
-        </button>
-      </form>
-      <p className="muted small">
-        <strong>{ROLE_LABELS[form.role]}</strong>: {ROLE_HELP[form.role]}.
-      </p>
+      </Intro>
+      <AddForm onSubmit={add}>
+        <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required minLength={2} />
+        <Input placeholder="E-mail" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+        <SelectField
+          value={form.role}
+          onChange={(v) => setForm({ ...form, role: v })}
+          options={ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
+        />
+        <Button disabled={busy}>Dar acesso</Button>
+        <p className="basis-full text-sm text-muted-foreground">
+          <strong className="text-foreground">{ROLE_LABELS[form.role]}</strong>: {ROLE_HELP[form.role]}.
+        </p>
+      </AddForm>
       {cred && <CredentialsCard name={cred.name} c={cred.c} onClose={() => setCred(null)} />}
-      {notice && <p className="notice">{notice}</p>}
-      {error && <p className="error">{error}</p>}
-      <table>
-        <thead>
-          <tr>
-            <th>Pessoa</th>
-            <th>Papel</th>
-            <th>Último acesso</th>
-            <th>Aviso aceito</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
+      {notice && <Notice>{notice}</Notice>}
+      {error && <ErrorState>{error}</ErrorState>}
+      <TableCard>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Pessoa</TableHead>
+            <TableHead>Papel</TableHead>
+            <TableHead>Último acesso</TableHead>
+            <TableHead>Aviso aceito</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data.map((m) => (
-            <tr key={m.id}>
-              <td>
-                {m.name} {m.is_me && <span className="muted">(você)</span>}
-                <div className="muted small">{m.email}</div>
-              </td>
-              <td>
-                <select value={m.role} disabled={busy} onChange={(e) => changeRole(m, e.target.value as Role)}>
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td>{m.last_login_at ? ago(m.last_login_at) : "nunca entrou"}</td>
-              <td>{m.disclaimer_accepted_at ? new Date(m.disclaimer_accepted_at).toLocaleDateString("pt-BR") : "—"}</td>
-              <td>
-                <div className="row">
+            <TableRow key={m.id}>
+              <TableCell>
+                <div className="font-medium">
+                  {m.name} {m.is_me && <span className="font-normal text-muted-foreground">(você)</span>}
+                </div>
+                <div className="text-xs text-muted-foreground">{m.email}</div>
+              </TableCell>
+              <TableCell>
+                <SelectField
+                  value={m.role}
+                  onChange={(v) => changeRole(m, v)}
+                  className="h-8"
+                  options={ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
+                />
+              </TableCell>
+              <TableCell>{m.last_login_at ? ago(m.last_login_at) : "nunca entrou"}</TableCell>
+              <TableCell className="tabular-nums">
+                {m.disclaimer_accepted_at ? new Date(m.disclaimer_accepted_at).toLocaleDateString("pt-BR") : "—"}
+              </TableCell>
+              <TableCell>
+                <div className="flex justify-end gap-2">
                   {!m.is_me && (
                     <>
-                      <button disabled={busy} onClick={() => reset(m)}>
+                      <Button variant="outline" size="sm" disabled={busy} onClick={() => reset(m)}>
                         Refazer acesso
-                      </button>
-                      <button className="danger" disabled={busy} onClick={() => remove(m)}>
+                      </Button>
+                      <Button variant="outline" size="sm" className={DANGER} disabled={busy} onClick={() => remove(m)}>
                         Tirar da campanha
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </TableCard>
     </>
   );
 }
@@ -729,27 +844,21 @@ function CredentialsCard({ name, c, onClose }: { name: string; c: Credentials; o
     QRCode.toDataURL(c.totp_uri, { margin: 1, width: 180 }).then(setQr);
   }, [c.totp_uri]);
   return (
-    <div className="card secret">
-      <div className="row between">
-        <strong>Acesso de {name}</strong>
-        <button className="link" onClick={onClose}>
-          Já entreguei, fechar
-        </button>
-      </div>
-      <div className="row cred">
-        {qr && <img src={qr} alt="QR code para o app autenticador" width={180} height={180} />}
-        <dl>
-          <dt>E-mail</dt>
+    <SecretCard title={<strong>Acesso de {name}</strong>} closeLabel="Já entreguei, fechar" onClose={onClose}>
+      <div className="flex flex-wrap items-start gap-5">
+        {qr && <img src={qr} alt="QR code para o app autenticador" width={180} height={180} className="rounded-md bg-white" />}
+        <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-2">
+          <dt className="text-sm text-muted-foreground">E-mail</dt>
           <dd>{c.email}</dd>
-          <dt>Senha provisória</dt>
-          <dd className="code">{c.password}</dd>
-          <dt>Chave do autenticador</dt>
-          <dd className="code small">{c.totp_secret}</dd>
+          <dt className="text-sm text-muted-foreground">Senha provisória</dt>
+          <dd className="font-mono text-2xl tracking-wider select-all">{c.password}</dd>
+          <dt className="text-sm text-muted-foreground">Chave do autenticador</dt>
+          <dd className="font-mono text-sm tracking-wide break-all select-all">{c.totp_secret}</dd>
         </dl>
       </div>
-      <p className="muted small">
+      <p className="text-sm text-muted-foreground">
         A pessoa lê o QR code com o Google Authenticator (ou Authy) ou digita a chave. Nada disto aparece de novo.
       </p>
-    </div>
+    </SecretCard>
   );
 }
