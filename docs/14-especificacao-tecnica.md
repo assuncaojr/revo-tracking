@@ -158,6 +158,9 @@ Todas as tabelas de campanha têm `campaign_id` desde o início (D10), mesmo com
 **Cliente**
 - `GET /results/summary` — bruto do dia e acumulado por pergunta (só agregados; células com n < 30 ocultadas)
 - `GET /results/overview` — panorama: indicadores-chave (configurados em `campaign.settings.indicators`) com margem de erro (Wilson, 95%) e variação contra os 7 dias anteriores, série diária e média móvel de 3 dias, estratos, grade de áreas
+- `GET /results/insights` — cruzamentos do indicador por voto passado, estrato e perfil; segmentos (`settings.segments`); rankings (`settings.rankings`); nome digitado fora da lista nunca sai como texto
+- `GET /results/map` — hexágonos (`settings.map.hex_m`, padrão 800 m no piloto) com indicador, margem e n; mínimo de 30 por hexágono para todos; GPS a mais de 50 km do centro da campanha fica fora (D26)
+- `GET /field/map` (só equipe) — um ponto por entrevista do dia, com alertas abertos, para supervisão
 - `GET /field/progress` — feitas × meta por estrato
 - `POST /questionnaires/{id}/approve`
 - Primeiro acesso exige aceite do aviso de não garantia (D16), registrado

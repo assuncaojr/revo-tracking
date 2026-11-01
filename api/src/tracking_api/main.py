@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from tracking_api import ingest, manage, models, overview, panel, security, web_auth
+from tracking_api import geo, ingest, insights, manage, models, overview, panel, security, web_auth
 from tracking_api.config import settings
 from tracking_api.db import get_session
 
@@ -18,6 +18,8 @@ app.include_router(web_auth.router)
 app.include_router(panel.router)
 app.include_router(manage.router)
 app.include_router(overview.router)
+app.include_router(insights.router)
+app.include_router(geo.router)
 
 DbSession = Annotated[Session, Depends(get_session)]
 

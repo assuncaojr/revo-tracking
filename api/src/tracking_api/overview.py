@@ -12,12 +12,14 @@ Quais indicadores aparecem é configuração da campanha (`settings.indicators`)
 import math
 import uuid
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from tracking_api import models
 from tracking_api.config import settings
@@ -94,43 +96,85 @@ def _changed(cur: dict, prev: dict, mean: bool) -> dict | None:
     return {"diff": round(diff, 2 if mean else 1), "beyond_margin": abs(diff) > Z * math.hypot(se_cur, se_prev)}
 
 
-@router.get("/campaigns/{cid}/results/overview")
-def overview(cid: uuid.UUID, user: AuthUser, s: DbSession,
-             period: Annotated[Literal["7d", "all"], Query()] = "7d") -> dict:
+@dataclass
+class Context:
+    """O que toda leitura de resultado precisa: quem pede, o período e as entrevistas válidas (completas, não excluídas)."""
+
+    campaign: models.Campaign
+    client: bool
+    hide: int  # n mínimo para mostrar um grupo (cliente: min_cell; equipe: 1)
+    tz: ZoneInfo
+    today: date
+    first_day: date
+    start: date
+    prev_start: date | None
+    prev_end: date | None
+    indicators: list[dict]
+    qv: models.QuestionnaireVersion | None
+    rows: list  # answers, derived, point_id, started_at, lat, lng, accuracy_m
+    point_stratum: dict
+
+    def day(self, row) -> date:
+        return row.started_at.astimezone(self.tz).date()
+
+    def in_window(self, row) -> bool:
+        return self.day(row) >= self.start
+
+    def indicator(self, key: str) -> dict:
+        ind = next((i for i in self.indicators if i["key"] == key), None)
+        if ind is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "indicador não configurado nesta campanha")
+        return ind
+
+    def question(self, key: str) -> dict | None:
+        return next((q for q in (self.qv.definition["questions"] if self.qv else []) if q["key"] == key), None)
+
+
+def load_context(cid: uuid.UUID, user: models.User, s: Session, period: str) -> Context:
     m = membership(s, user, cid, ALL)
     client = m.role in models.ROLES_CLIENT
     if client and m.disclaimer_accepted_at is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "aceite o aviso de que o sistema não garante eleição")
     campaign = s.get(models.Campaign, cid)
-    hide = settings().min_cell if client else 1
     tz = ZoneInfo(campaign.timezone)
     today = _today(campaign)
-    indicators = (campaign.settings or {}).get("indicators", [])
     qv = s.scalar(select(models.QuestionnaireVersion)
                   .where(models.QuestionnaireVersion.campaign_id == cid,
                          models.QuestionnaireVersion.published_at.is_not(None))
                   .order_by(models.QuestionnaireVersion.published_at.desc()).limit(1))
-
-    rows = s.execute(select(models.Interview.answers, models.Interview.point_id, models.Interview.started_at).where(
-        models.Interview.campaign_id == cid, models.Interview.status == "complete",
-        models.Interview.excluded.is_(False))).all()
-    point_stratum, _ = _strata(s, cid)
-
+    I = models.Interview
+    rows = s.execute(select(I.answers, I.derived, I.point_id, I.started_at, I.lat, I.lng, I.accuracy_m).where(
+        I.campaign_id == cid, I.status == "complete", I.excluded.is_(False))).all()
     first_day = min((r.started_at.astimezone(tz).date() for r in rows), default=today)
     if period == "7d":
         start = today - timedelta(days=WINDOW_DAYS - 1)
         prev_start, prev_end = start - timedelta(days=WINDOW_DAYS), start
     else:
         start, prev_start, prev_end = first_day, None, None
+    return Context(campaign=campaign, client=client, hide=settings().min_cell if client else 1, tz=tz, today=today,
+                   first_day=first_day, start=start, prev_start=prev_start, prev_end=prev_end,
+                   indicators=(campaign.settings or {}).get("indicators", []), qv=qv, rows=rows,
+                   point_stratum=_strata(s, cid)[0])
+
+
+Period = Annotated[Literal["7d", "all"], Query()]
+
+
+@router.get("/campaigns/{cid}/results/overview")
+def overview(cid: uuid.UUID, user: AuthUser, s: DbSession, period: Period = "7d") -> dict:
+    c = load_context(cid, user, s, period)
+    client, hide, today, qv, rows = c.client, c.hide, c.today, c.qv, c.rows
+    indicators, point_stratum, tz = c.indicators, c.point_stratum, c.tz
+    first_day, start, prev_start, prev_end = c.first_day, c.start, c.prev_start, c.prev_end
 
     # dia × estrato × indicador → estimativa (o resto é soma destas células)
     cells: dict[tuple[date, str, str], Estimate] = {}
     grid_q = next((q for q in (qv.definition["questions"] if qv else []) if q["type"] == "grid"), None)
     grid_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     n_window = 0
-    for answers, point_id, started_at in rows:
-        day = started_at.astimezone(tz).date()
-        stratum = point_stratum.get(point_id, "—")
+    for r in rows:
+        answers, day = r.answers, c.day(r)
+        stratum = point_stratum.get(r.point_id, "—")
         in_window = day >= start
         n_window += in_window
         for ind in indicators:

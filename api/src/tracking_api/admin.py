@@ -28,6 +28,13 @@ PILOT_SETTINGS = {
         {"key": "continue", "label": "Quer que continue", "question": "E1", "values": ["continuar"]},
         {"key": "change", "label": "Quer mudança", "question": "E1", "values": ["mudar"]},
     ],
+    # Cruzamentos, segmentos e rankings (insights.py, D27)
+    "segments": {"rows": "G1", "cols": "E1", "names": {
+        "aprova|continuar": "Base fiel", "aprova|mudar": "Aprova, mas quer mudança",
+        "desaprova|continuar": "Desaprova, mas aceita continuar", "desaprova|mudar": "Oposição"}},
+    "rankings": ["G7", "E2"],
+    # Mapa agregado (geo.py, D26): lado do hexágono em metros
+    "map": {"hex_m": 800},
 }
 
 PILOT_STRATA = {
