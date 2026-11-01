@@ -6,6 +6,7 @@ coroutines = "1.9.0"
 serialization = "1.7.3"
 compose-bom = "2024.12.01"
 activity-compose = "1.9.3"
+fragment = "1.8.5"
 lifecycle = "2.8.7"
 room = "2.6.1"
 work = "2.10.0"
@@ -25,6 +26,8 @@ compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+# Fixa o Fragment: o play-services-location traz um antigo, que quebra a API de permissões (lint InvalidFragmentVersionForActivityResult)
+fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment" }
 lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }

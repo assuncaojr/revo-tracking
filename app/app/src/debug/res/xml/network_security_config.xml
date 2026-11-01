@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Só no build de debug: HTTP liberado para falar com a API de desenvolvimento
+  (emulador em 10.0.2.2; aparelho real no IP da máquina na rede local, que muda).
+  O release não tem este arquivo e exige HTTPS.
+-->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">10.0.2.2</domain>
-        <domain includeSubdomains="false">localhost</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>
