@@ -89,6 +89,17 @@ def new_enrollment_code(s: Session, device: models.Device, valid_hours: int = 72
     return code
 
 
+def reissue_device_code(s: Session, device_id: uuid.UUID, valid_hours: int = 72) -> str:
+    """Novo código para um aparelho existente (token perdido ou revogado por engano).
+    Mantém o mesmo device_id, então as entrevistas que ainda estão na fila dele continuam válidas."""
+    d = s.get(models.Device, device_id)
+    if d is None:
+        raise AdminError("aparelho não encontrado")
+    d.revoked_at = None
+    d.token_hash = None
+    return new_enrollment_code(s, d, valid_hours)
+
+
 def revoke_device(s: Session, device_id: uuid.UUID):
     d = s.get(models.Device, device_id)
     if d is None:

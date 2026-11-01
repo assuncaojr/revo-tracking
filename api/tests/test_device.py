@@ -41,6 +41,19 @@ def test_sem_token_ou_revogado_nao_entra(client, auth, pilot):
     assert client.get("/api/device/bootstrap", headers=auth).status_code == 401
 
 
+def test_aparelho_revogado_recebe_novo_codigo_e_mantem_o_id(client, auth, pilot):
+    with session_factory()() as s:
+        admin.revoke_device(s, pilot["device"])
+        s.commit()
+    assert client.get("/api/device/bootstrap", headers=auth).status_code == 401
+    with session_factory()() as s:
+        code = admin.reissue_device_code(s, pilot["device"])
+        s.commit()
+    r = client.post("/api/device/enroll", json={"code": code})
+    assert r.status_code == 200
+    assert r.json()["device_id"] == str(pilot["device"]), "mesmo id: a fila do aparelho continua válida"
+
+
 def test_heartbeat_registra_pendencias_e_bateria(client, auth, pilot):
     r = client.post("/api/device/heartbeat", headers=auth, json={"pending_count": 7, "battery_pct": 41})
     assert r.status_code == 200

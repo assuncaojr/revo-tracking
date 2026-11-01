@@ -34,6 +34,10 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--label", required=True)
     sp.add_argument("--valid-hours", type=int, default=72)
 
+    sp = sub.add_parser("device-code", help="novo código para aparelho existente (mantém o id e a fila dele)")
+    sp.add_argument("--device", type=uuid.UUID, required=True)
+    sp.add_argument("--valid-hours", type=int, default=72)
+
     sp = sub.add_parser("device-revoke")
     sp.add_argument("--device", type=uuid.UUID, required=True)
 
@@ -65,6 +69,9 @@ def main(argv: list[str] | None = None) -> int:
             elif a.cmd == "device-add":
                 d, code = admin.add_device(s, a.campaign, a.label, a.valid_hours)
                 print(f"aparelho: {d.id}\ncódigo de cadastro (válido por {a.valid_hours} h): {code}")
+            elif a.cmd == "device-code":
+                code = admin.reissue_device_code(s, a.device, a.valid_hours)
+                print(f"código de cadastro (válido por {a.valid_hours} h): {code}")
             elif a.cmd == "device-revoke":
                 admin.revoke_device(s, a.device)
                 print("revogado")
