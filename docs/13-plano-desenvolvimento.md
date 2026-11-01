@@ -31,7 +31,8 @@ O piloto prova a **operação** e mede o **viés do método**. Ele não precisa 
 |---|---|---|
 | **S1** | 03–07/11 | Especificação técnica: contratos, modelo de dados, telas do app e do painel, decisões de MDM e do app. Repositório, ambiente, `.gitignore` (D22). **Start do código** (dado em 31/10). *Adiantado em 31/10: especificação (`14-especificacao-tecnica.md`), repositório, contratos e questionário do piloto validado no formato.* |
 | **S2** | 10–14/11 | Núcleo: autenticação, cadastros, bootstrap, ingestão idempotente. App: casca offline (instalação, fila, envio). *Adiantado em 31/10: motor do questionário (Kotlin, 26 testes) e núcleo (cadastro de aparelho, bootstrap, ingestão idempotente, flags na ingestão, 19 testes, incluindo a prova de que o que o app produz a API aceita). Falta a casca Android do app.* |
-| **S3** | 17–21/11 | App: renderizador e tipos de pergunta do questionário do piloto. Questionário v1 escrito no formato e validado |
+| **S3** | 17–21/11 | *Adiantado em 01/11: app Android funcionando de ponta a ponta no emulador (cadastro, login offline, entrevista, retomada após queda, fila offline, envio automático ao voltar a rede).* |
+| ~~S3 original~~ | 17–21/11 | App: renderizador e tipos de pergunta do questionário do piloto. Questionário v1 escrito no formato e validado |
 | **S4** | 24–28/11 | App: condicionais, encerramento, embaralhar, disco, autocompletar, consentimento, recusa. Núcleo: flags de qualidade. **Compra dos 6 aparelhos até aqui** |
 | **S5** | 01–05/12 | Painel "campo agora". SPA mínimo do cliente. Deploy com HTTPS |
 | **S6** | 08–12/12 | Aparelhos: reset, MDM, quiosque, instalação. **Ensaio técnico:** modo avião, 200+ entrevistas simuladas, envio ao voltar a rede, teste de bateria de 6 h |
