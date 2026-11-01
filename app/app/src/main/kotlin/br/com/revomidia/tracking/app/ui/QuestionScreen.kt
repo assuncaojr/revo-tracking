@@ -119,7 +119,7 @@ private fun optionsInOrder(e: InterviewEngine, q: Question): List<Option> {
 }
 
 @Composable
-private fun BigChoice(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun BigChoice(label: String, selected: Boolean, onClick: () -> Unit) {
     if (selected) {
         Button(onClick, Modifier.fillMaxWidth().heightIn(min = 56.dp)) { Text(label, style = MaterialTheme.typography.titleMedium) }
     } else {

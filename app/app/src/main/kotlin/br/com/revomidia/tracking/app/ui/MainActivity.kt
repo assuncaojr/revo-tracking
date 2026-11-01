@@ -85,12 +85,15 @@ private fun EnrollScreen(vm: AppViewModel, known: Boolean) {
         Text("Cadastro do aparelho", style = MaterialTheme.typography.headlineSmall)
         Text(
             if (known) "Este aparelho perdeu a autorização. Digite o novo código que o supervisor gerou para ele. As entrevistas guardadas continuam no aparelho."
-            else "Digite o código de cadastro entregue pelo supervisor."
+            else "Feito uma vez por aparelho, pelo supervisor. Digite o código de cadastro do aparelho."
         )
-        OutlinedTextField(code, { code = it.uppercase() }, label = { Text("Código") }, singleLine = true,
+        OutlinedTextField(code, { code = it.uppercase().filter(Char::isLetterOrDigit).take(8) },
+            label = { Text("Código do aparelho") }, placeholder = { Text("Ex.: AB12CD34") }, singleLine = true,
+            supportingText = { Text("8 letras e números. Não é o PIN do entrevistador.") },
             modifier = Modifier.fillMaxWidth())
-        Button({ vm.enroll(code) }, enabled = code.length >= 6 && !vm.busy, modifier = Modifier.fillMaxWidth()) {
-            Text(if (vm.busy) "Cadastrando…" else "Cadastrar")
+        Button({ vm.enroll(code) }, enabled = code.length == 8 && !vm.busy,
+            modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Text(if (vm.busy) "Cadastrando…" else "Cadastrar aparelho")
         }
     }
 }
@@ -98,7 +101,8 @@ private fun EnrollScreen(vm: AppViewModel, known: Boolean) {
 @Composable
 private fun LoginScreen(vm: AppViewModel) {
     val b = vm.bootstrap
-    var who by remember { mutableStateOf<InterviewerInfo?>(null) }
+    // Com um só entrevistador cadastrado, já vem escolhido.
+    var who by remember(b) { mutableStateOf(b?.interviewers?.singleOrNull()) }
     var pin by remember { mutableStateOf("") }
     Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Início do turno", style = MaterialTheme.typography.headlineSmall)
@@ -108,18 +112,21 @@ private fun LoginScreen(vm: AppViewModel) {
             OutlinedButton({ vm.refreshBootstrap() }) { Text("Atualizar") }
             return
         }
-        Text("Quem é você?")
-        b.interviewers.forEach { i ->
-            FilterChip(selected = who?.id == i.id, onClick = { who = i }, label = { Text(i.name) },
-                modifier = Modifier.fillMaxWidth())
-        }
+        Text("1. Toque no seu nome", fontWeight = FontWeight.Bold)
+        b.interviewers.forEach { i -> BigChoice(i.name, who?.id == i.id) { who = i } }
+        Text("2. Digite seu PIN", fontWeight = FontWeight.Bold)
         OutlinedTextField(pin, { pin = it.filter(Char::isDigit).take(8) }, label = { Text("PIN") }, singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
             modifier = Modifier.fillMaxWidth())
         Button({ who?.let { vm.login(it, pin) } }, enabled = who != null && pin.length >= 4 && !vm.busy,
-            modifier = Modifier.fillMaxWidth()) {
+            modifier = Modifier.fillMaxWidth().height(56.dp)) {
             Text(if (vm.busy) "Conferindo…" else "Entrar")
+        }
+        // Diz o que falta enquanto o botão estiver desligado
+        when {
+            who == null -> Text("Toque no seu nome acima para entrar.", color = MaterialTheme.colorScheme.error)
+            pin.length < 4 -> Text("O PIN tem de 4 a 8 números.", style = MaterialTheme.typography.bodySmall)
         }
         OutlinedButton({ vm.refreshBootstrap() }) { Text("Atualizar dados") }
     }
@@ -129,7 +136,10 @@ private fun LoginScreen(vm: AppViewModel) {
 private fun HomeScreen(vm: AppViewModel) {
     val b = vm.bootstrap
     val s = vm.session
-    LaunchedEffect(Unit) { vm.refreshCounters() }
+    LaunchedEffect(Unit) {
+        vm.refreshCounters()
+        vm.syncIfPending()
+    }
     Column(Modifier.padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Olá, ${s?.interviewerName ?: ""}", style = MaterialTheme.typography.headlineSmall)
         StatusBar(vm)

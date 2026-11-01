@@ -2,7 +2,9 @@ package br.com.revomidia.tracking.app
 
 import android.app.Application
 import android.content.Context
+import android.os.BatteryManager
 import androidx.room.Room
+import br.com.revomidia.tracking.app.data.Syncer
 import br.com.revomidia.tracking.app.data.AppDb
 import br.com.revomidia.tracking.app.data.DeviceStore
 import br.com.revomidia.tracking.app.data.InterviewQueue
@@ -29,4 +31,8 @@ class AppContainer(context: Context) {
     val drafts = db.drafts()
     val api = ApiClient(BuildConfig.API_BASE_URL, store::token)
     val locator = Locator(context)
+    val syncer = Syncer(store, queue, api, battery = {
+        (context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager)
+            ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)?.takeIf { it in 0..100 }
+    }, appVersion = BuildConfig.VERSION_NAME)
 }

@@ -40,11 +40,12 @@ class InterviewQueue(private val dao: QueueDao) {
 
     suspend fun pending(limit: Int = 50) = dao.pending(limit)
 
-    suspend fun apply(sent: List<QueuedInterview>, results: List<BatchResult>) {
+    suspend fun apply(sent: List<QueuedInterview>, results: List<BatchResult>): BatchOutcome {
         val o = planOutcome(sent.map { it.id }, results)
         if (o.delete.isNotEmpty()) dao.delete(o.delete)
         o.rejected.forEach { (id, err) -> dao.markRejected(id, err) }
         if (o.retry.isNotEmpty()) dao.markAttempt(o.retry, "sem resposta do servidor para o item")
+        return o
     }
 
     suspend fun failed(sent: List<QueuedInterview>, error: String) = dao.markAttempt(sent.map { it.id }, error)

@@ -1,7 +1,10 @@
 package br.com.revomidia.tracking.app.ui
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Build
+import br.com.revomidia.tracking.app.data.SyncResult
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -109,7 +112,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             c.store.saveEnrollment(r.deviceId, r.campaignId, r.label, r.token)
             refreshBootstrap(silent = false)
             screen = if (session != null) Screen.Home else Screen.Login
-            SyncWorker.kick(getApplication()) // fila que ficou de um token anterior
+            syncIfPending() // fila que ficou de um token anterior
         } catch (e: IOException) {
             message = "Não foi possível cadastrar: ${e.message}"
         }
@@ -169,10 +172,46 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         session = s
     }
 
-    fun sendNow() {
-        SyncWorker.kick(getApplication())
-        message = "Envio solicitado"
-        viewModelScope.launch { refreshCounters() }
+    fun sendNow() = launchBusy { sync(silent = false) }
+
+    /** Ao abrir a tela inicial ou quando a rede volta: envia se houver algo na fila. */
+    fun syncIfPending() {
+        viewModelScope.launch { if (c.queue.pendingCount() > 0) sync(silent = true) }
+    }
+
+    /**
+     * Envio feito pelo próprio app aberto, na hora. Se não der (sem rede), pede ao WorkManager
+     * como segunda via: ele espera a rede e tenta de novo mesmo com o app fechado.
+     */
+    private suspend fun sync(silent: Boolean) {
+        when (val r = c.syncer.sync()) {
+            is SyncResult.Done -> if (!silent) message =
+                if (r.sent > 0) "${r.sent} entrevista(s) enviada(s)" else "Nada a enviar"
+            is SyncResult.Offline -> {
+                SyncWorker.kick(getApplication())
+                if (!silent) message = "Sem conexão. As entrevistas ficam guardadas e vão sozinhas quando a rede voltar."
+            }
+            // Nunca tira o entrevistador do meio de uma entrevista: o aviso aparece quando ela terminar.
+            SyncResult.Unauthorized -> if (c.store.known && screen !is Screen.Interview) {
+                screen = Screen.Enroll(known = true)
+                message = "Aparelho não autorizado. Peça ao supervisor um novo código para este aparelho."
+            }
+        }
+        refreshCounters()
+    }
+
+    /** Rede voltou com o app aberto: envia sem esperar o agendador do sistema. */
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) = syncIfPending()
+    }
+
+    init {
+        app.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(networkCallback)
+    }
+
+    override fun onCleared() {
+        getApplication<Application>().getSystemService(ConnectivityManager::class.java)
+            ?.unregisterNetworkCallback(networkCallback)
     }
 
     suspend fun refreshCounters() {
@@ -274,8 +313,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         interview = null
         draft = null
         refreshCounters()
-        SyncWorker.kick(getApplication())
         screen = Screen.Done(status)
+        sync(silent = true) // envia na hora; sem rede, fica na fila e o WorkManager assume
     }
 
     /**
