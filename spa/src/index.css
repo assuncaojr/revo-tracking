@@ -6,6 +6,7 @@
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
 @import "./styles.css" layer(legacy);
+@import "./charts.css" layer(components);
 
 @custom-variant dark (&:is(.dark *));
 
@@ -31,6 +32,20 @@
   --border: #e3e6eb;
   --input: #d9dde3;
   --ring: #9aa1ad;
+
+  /* Cor dos dados: azul = a favor da gestão, vermelho = contra, cinza = dentro da margem.
+     Séries por entidade em ordem fixa, paleta validada para daltonismo (ver Overview.tsx). */
+  --fav: #2a78d6;
+  --unfav: #e34948;
+  --mid: #d9d8d4;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --div-pos: #2a78d6;
+  --div-mid: #cfcec9;
+  --div-neg: #e34948;
+  --div-none: #ecebe7;
+  --grid-line: #ecedf0;
 }
 
 @theme inline {

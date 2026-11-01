@@ -1,6 +1,8 @@
 // Preferências de leitura do usuário, guardadas no navegador (D28): por padrão o painel esconde o "± N pts"
 // e diz a leitura em palavras; quem quiser liga as margens. Vale para todas as telas ao mesmo tempo.
-import { useSyncExternalStore } from "react";
+import { useId, useSyncExternalStore } from "react";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 const KEY = "trk.showMargins";
 const listeners = new Set<() => void>();
@@ -37,10 +39,13 @@ export function useShowMargins(): boolean {
 
 export function MarginsToggle() {
   const on = useShowMargins();
+  const id = useId();
   return (
-    <label className="row toggle small">
-      <input type="checkbox" checked={on} onChange={(e) => setShowMargins(e.target.checked)} />
-      Mostrar margens de erro
-    </label>
+    <div className="no-print flex items-center gap-2">
+      <Switch id={id} checked={on} onCheckedChange={setShowMargins} />
+      <Label htmlFor={id} className="font-normal text-muted-foreground">
+        Mostrar margens de erro
+      </Label>
+    </div>
   );
 }

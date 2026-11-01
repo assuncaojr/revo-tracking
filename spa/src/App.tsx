@@ -13,6 +13,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut } from "lucide-react";
+import { Toaster } from "@/components/ui/sonner";
+import { DialogHost } from "@/components/dialogs";
 
 type Tab = "field" | "flags" | "summary" | "hoods" | "details" | "questionnaire" | "manage";
 
@@ -64,6 +66,8 @@ export function App() {
   return (
     <>
       <Watermark me={me} />
+      <Toaster />
+      <DialogHost />
       <header className="no-print sticky top-0 z-20 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
