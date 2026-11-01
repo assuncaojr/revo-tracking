@@ -5,10 +5,11 @@ import type { CampaignAccess, CoverageMap, OpinionMap } from "../api";
 import { duration, FLAG_LABELS, STATUS_LABELS, timeOf } from "../format";
 import { usePoll } from "../usePoll";
 import { fmt, margin } from "./Overview";
+import { TONE_COLORS, TONE_LABELS, TONE_ORDER, toneOf } from "../tone";
 
-// Rampa sequencial de um só tom (azul, claro → escuro): magnitude, sem sugerir "bom" ou "ruim".
-const RAMP = ["#b7d3f6", "#86b6ef", "#3987e5", "#256abf", "#104281"];
-const SUPPRESSED = "#cfcec9";
+// Hexágono pintado pela comparação com a média da área inteira (tone.ts): azul = mais favorável à gestão,
+// vermelho = menos, cinza = igual dentro da margem. Leitura direta para quem não é técnico.
+const SUPPRESSED = "#f1f0ed";
 const COMPLETE = "#2a78d6";
 const NOT_COMPLETE = "#9a9a94";
 const FLAGGED = "#d03b3b"; // cor de status (crítico), sempre com rótulo na legenda
@@ -68,21 +69,6 @@ export function MapView({ campaign }: { campaign: CampaignAccess }) {
 
 // --- opinião em hexágonos ---
 
-function classes(cells: OpinionMap["cells"], mean: boolean): number[] {
-  const vals = cells.map((c) => c.value).filter((v): v is number => v != null);
-  if (!vals.length) return [];
-  const step = mean ? 0.5 : 5;
-  let lo = Math.floor(Math.min(...vals) / step) * step;
-  let hi = Math.ceil(Math.max(...vals) / step) * step;
-  if (hi - lo < step * RAMP.length) {
-    const mid = (lo + hi) / 2;
-    lo = Math.floor((mid - (step * RAMP.length) / 2) / step) * step;
-    hi = lo + step * RAMP.length;
-  }
-  const w = (hi - lo) / RAMP.length;
-  return Array.from({ length: RAMP.length + 1 }, (_, i) => +(lo + i * w).toFixed(2));
-}
-
 function Opinion({ campaign }: { campaign: CampaignAccess }) {
   const [period, setPeriod] = useState<"7d" | "all">("all");
   const [indicator, setIndicator] = useState("approval");
@@ -92,26 +78,23 @@ function Opinion({ campaign }: { campaign: CampaignAccess }) {
     5 * 60_000,
   );
   const mean = data?.indicator.mean ?? false;
-  const breaks = data ? classes(data.cells, mean) : [];
-  const colorOf = (v: number) => {
-    const i = breaks.findIndex((b, k) => k > 0 && v <= b);
-    return RAMP[Math.max(0, i === -1 ? RAMP.length - 1 : i - 1)];
-  };
+  const ref = data?.total?.value;
   const [fitted, setFitted] = useState(false);
 
   const el = useLeaflet(
     (map, layer) => {
       if (!data) return;
       for (const c of data.cells) {
-        const hasValue = c.value != null;
+        const tone = toneOf(c, ref, data.indicator.favorable, mean);
         const poly = L.polygon(c.polygon, {
-          color: "#ffffff",
+          color: tone ? "#ffffff" : "#b9b8b2",
           weight: 1.5,
-          fillColor: hasValue ? colorOf(c.value!) : SUPPRESSED,
-          fillOpacity: hasValue ? 0.72 : 0.35,
+          fillColor: tone ? TONE_COLORS[tone] : SUPPRESSED,
+          fillOpacity: tone ? 0.78 : 0.5,
         });
-        const body = hasValue
-          ? `<strong>${fmt(c.value, mean)}</strong> ${margin(c, mean)}<br><span class="muted">${c.n} entrevistas</span>`
+        const body = tone
+          ? `<strong>${fmt(c.value, mean)}</strong> ${margin(c, mean)} · média ${fmt(ref, mean)}<br>` +
+            `${TONE_LABELS[tone]}<br><span class="muted">${c.n} entrevistas</span>`
           : `<span class="muted">${c.interviews} entrevistas: poucas para mostrar o resultado</span>`;
         poly.bindTooltip(`${escape(data.indicator.label)}<br>${body}`, { sticky: true });
         poly.addTo(layer);
@@ -166,15 +149,18 @@ function Opinion({ campaign }: { campaign: CampaignAccess }) {
           Áreas maiores juntam mais entrevistas e escondem menos.
         </p>
         <div className="map" ref={el} />
-        {breaks.length > 0 && (
+        {data && ref != null && (
           <div className="legend map-legend">
-            {RAMP.map((c, i) => (
-              <span key={c}>
-                <i style={{ background: c }} /> {fmt(breaks[i], mean)}–{fmt(breaks[i + 1], mean)}
+            <span className="muted">
+              Comparado com a média da área ({fmt(ref, mean)}):
+            </span>
+            {TONE_ORDER.map((t) => (
+              <span key={t}>
+                <i style={{ background: TONE_COLORS[t] }} /> {TONE_LABELS[t]}
               </span>
             ))}
             <span>
-              <i style={{ background: SUPPRESSED }} /> poucas entrevistas
+              <i style={{ background: SUPPRESSED, outline: "1px solid #b9b8b2" }} /> poucas entrevistas
             </span>
           </div>
         )}

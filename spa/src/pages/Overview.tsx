@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Estimate, Indicator, Overview as OverviewData } from "../api";
+import { changeColor } from "../tone";
 
 // Cores por entidade, em ordem fixa (paleta validada para daltonismo; ver skill de dataviz):
 // o total é sempre azul; cada estrato mantém a sua cor em todos os gráficos.
@@ -84,11 +85,21 @@ function Change({ ind }: { ind: Indicator }) {
   const unit = ind.mean ? "" : " pts";
   const shown = ind.mean ? nf1.format(Math.abs(diff)) : Math.round(Math.abs(diff));
   const arrow = Math.abs(diff) < (ind.mean ? 0.05 : 0.5) ? "→" : diff > 0 ? "↑" : "↓";
+  if (!beyond_margin)
+    return (
+      <span className="tile-change">
+        {arrow} {shown}
+        {unit} na semana · estável: a variação cabe na margem
+      </span>
+    );
+  const good = ind.favorable ? diff > 0 : diff < 0;
   return (
-    <span className={`tile-change${beyond_margin ? " strong" : ""}`}>
-      {arrow} {shown}
-      {unit} na semana ·{" "}
-      {beyond_margin ? "mudança maior que a margem" : "dentro da margem (pode ser oscilação)"}
+    <span className="tile-change strong">
+      <span className="chip" style={{ background: changeColor(diff, ind.favorable) }}>
+        {arrow} {shown}
+        {unit}
+      </span>{" "}
+      na semana · {good ? "melhora real para a gestão" : "piora real para a gestão"}
     </span>
   );
 }

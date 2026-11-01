@@ -171,7 +171,7 @@ svg .crosshair { stroke: var(--muted); stroke-width: 1; }
 .segments th[scope="row"] { color: var(--text); font-size: 14px; text-transform: none; letter-spacing: 0; }
 .segcell { text-align: center; border: 2px solid var(--card); border-radius: 6px; padding: 12px 8px; }
 .segcell strong { display: block; font-size: 20px; }
-.segcell span { display: block; font-size: 12px; color: var(--text); }
+.segcell span { display: block; font-size: 12px; }
 .ranking { display: grid; gap: 2px; }
 .rrow { display: grid; grid-template-columns: 220px 1fr 56px auto; gap: 12px; align-items: center; min-height: 28px; font-size: 13px; }
 .rrow.nr { color: var(--muted); }
@@ -187,3 +187,5 @@ svg .crosshair { stroke: var(--muted); stroke-width: 1; }
 .ring-swatch { background: transparent !important; border: 2px solid; border-radius: 50% !important; box-sizing: border-box; }
 .leaflet-tooltip { font-family: inherit; font-size: 13px; }
 .leaflet-tooltip .muted { color: var(--muted); }
+.chip { display: inline-block; color: #fff; border-radius: 10px; padding: 1px 7px; font-weight: 600; }
+.dot.dot-same { box-shadow: 0 0 0 2px var(--card); }

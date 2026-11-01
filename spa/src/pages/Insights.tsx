@@ -1,7 +1,10 @@
 import type { CrossGroup, Insights as InsightsData, RankingItem } from "../api";
 import { fmt, margin, stratumColor } from "./Overview";
+import { TONE_COLORS, TONE_LABELS, toneOf } from "../tone";
 
 const BLUE = "var(--series-1)";
+const FAV = "#2a78d6";
+const UNFAV = "#e34948";
 
 /** Régua comum a todos os cruzamentos da tela: arredondada a 10 pontos em volta dos dados (percentual) ou a escala. */
 function domain(groups: CrossGroup[], mean: boolean): [number, number] {
@@ -25,13 +28,29 @@ export function Crosstab({ data }: { data: InsightsData }) {
     <div className="card chart-card">
       <h3>{ct.indicator.label}, por grupo</h3>
       <p className="muted small">
-        Ponto: resultado do grupo; traço: margem de erro; linha cinza: total ({fmt(ct.total.value, mean)}). Grupos cujo
-        traço cruza a linha não se diferenciam do total com segurança.
+        Ponto: resultado do grupo; traço: margem de erro; linha cinza: total ({fmt(ct.total.value, mean)}). Só ganha cor
+        o grupo que se diferencia do total de verdade (o traço não cruza a linha).
       </p>
+      <div className="legend">
+        <span>
+          <i style={{ background: FAV }} /> mais favorável à gestão que o total
+        </span>
+        <span>
+          <i style={{ background: "#9a9a94" }} /> {TONE_LABELS.same}
+        </span>
+        <span>
+          <i style={{ background: UNFAV }} /> menos favorável à gestão que o total
+        </span>
+      </div>
       {ct.dimensions.map((d) => (
         <section key={d.key} className="xdim">
           <h4>{d.label}</h4>
-          {d.groups.map((g) => (
+          {d.groups.map((g) => {
+            const tone = toneOf(g, ct.total.value, ct.indicator.favorable, mean);
+            // Ponto pequeno no branco: só direção (azul, vermelho, cinza), sempre no tom forte; o tamanho da
+            // diferença já está no valor escrito ao lado
+            const color = !tone ? BLUE : tone === "same" ? "#9a9a94" : tone.startsWith("fav") ? FAV : UNFAV;
+            return (
             <div key={g.group} className="xrow">
               <div className="xlabel">{g.label}</div>
               <div className="xtrack">
@@ -40,9 +59,12 @@ export function Crosstab({ data }: { data: InsightsData }) {
                   <>
                     <span
                       className="whisker"
-                      style={{ left: pos(g.low), width: `calc(${pos(g.high)} - ${pos(g.low)})`, top: 12, background: BLUE }}
+                      style={{ left: pos(g.low), width: `calc(${pos(g.high)} - ${pos(g.low)})`, top: 12, background: color }}
                     />
-                    <span className="dot" style={{ left: pos(g.value), top: 9, background: BLUE }} />
+                    <span
+                      className={`dot${tone === "same" ? " dot-same" : ""}`}
+                      style={{ left: pos(g.value), top: 9, background: color }}
+                    />
                   </>
                 )}
               </div>
@@ -57,7 +79,8 @@ export function Crosstab({ data }: { data: InsightsData }) {
               </div>
               <div className="xn muted">{g.n}</div>
             </div>
-          ))}
+            );
+          })}
         </section>
       ))}
       <div className="xrow xaxis muted small">
@@ -86,6 +109,18 @@ export function Segments({ data }: { data: InsightsData }) {
         Colunas: {sg.cols.text}
         {sg.left_out > 0 && ` Fora da matriz: ${sg.left_out} que não souberam ou não responderam uma das duas.`}
       </p>
+      <div className="legend">
+        <span>
+          <i style={{ background: TONE_COLORS.fav2 }} /> a favor da gestão
+        </span>
+        <span>
+          <i style={{ background: TONE_COLORS.unfav2 }} /> contra a gestão
+        </span>
+        <span>
+          <i style={{ background: "#9a9a94" }} /> dividido
+        </span>
+        <span className="muted">· cor mais forte = segmento maior</span>
+      </div>
       <table className="segments">
         <thead>
           <tr>
@@ -105,9 +140,15 @@ export function Segments({ data }: { data: InsightsData }) {
               {sg.cols.values.map((c) => {
                 const cell = sg.cells[`${r.value}|${c.value}`];
                 const name = sg.names[`${r.value}|${c.value}`];
-                const a = cell?.pct != null ? 0.12 + 0.55 * (cell.pct / max) : 0;
+                const a = cell?.pct != null ? 0.15 + 0.6 * (cell.pct / max) : 0;
+                const tone = sg.tones[`${r.value}|${c.value}`];
+                const rgb = tone === "favorable" ? "28, 92, 171" : tone === "unfavorable" ? "201, 58, 57" : "120, 118, 110";
                 return (
-                  <td key={c.value} className="segcell" style={{ background: `rgba(42, 120, 214, ${a})` }}>
+                  <td
+                    key={c.value}
+                    className="segcell"
+                    style={{ background: `rgba(${rgb}, ${a})`, color: a > 0.5 ? "#fff" : undefined }}
+                  >
                     <strong>{cell?.pct != null ? `${Math.round(cell.pct)}%` : cell?.suppressed ? "<30" : "—"}</strong>
                     {name && <span>{name}</span>}
                   </td>

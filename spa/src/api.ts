@@ -254,6 +254,7 @@ export interface Indicator {
   label: string;
   question: string;
   mean: boolean;
+  favorable: boolean;
   scale: [number, number] | null;
   current: Estimate;
   previous: Estimate | null;
@@ -318,7 +319,7 @@ export interface Insights {
   min_cell: number | null;
   indicators: { key: string; label: string }[];
   crosstab: {
-    indicator: { key: string; label: string; mean: boolean };
+    indicator: { key: string; label: string; mean: boolean; favorable: boolean };
     total: Estimate;
     dimensions: { key: string; label: string; groups: CrossGroup[] }[];
   } | null;
@@ -326,6 +327,7 @@ export interface Insights {
     n: number;
     names: Record<string, string>;
     left_out: number;
+    tones: Record<string, "favorable" | "unfavorable">;
     rows: { key: string; text: string; values: QOption[] };
     cols: { key: string; text: string; values: QOption[] };
     cells: Record<string, SegmentCell>;
@@ -346,7 +348,8 @@ export interface OpinionMap {
   sizes: number[];
   n: number;
   n_located: number;
-  indicator: { key: string; label: string; mean: boolean; scale: [number, number] };
+  indicator: { key: string; label: string; mean: boolean; scale: [number, number]; favorable: boolean };
+  total?: Estimate;
   indicators: { key: string; label: string }[];
   min_cell: number;
   bounds: [[number, number], [number, number]] | null;
