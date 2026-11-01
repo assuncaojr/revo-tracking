@@ -120,7 +120,7 @@ export function App() {
         <DisclaimerGate campaign={campaign} onAccepted={loadMe} />
       ) : (
         <>
-          <main>
+          <main className="mx-auto max-w-[1280px] px-4 pt-5 pb-6 sm:px-6 sm:pb-20 print:max-w-none print:p-0">
             {current === "field" && <FieldNow campaignId={campaign.id} />}
             {current === "flags" && <Flags campaign={campaign} />}
             {current === "summary" && <Summary campaign={campaign} />}
@@ -147,7 +147,7 @@ function DisclaimerGate({ campaign, onAccepted }: { campaign: CampaignAccess; on
     onAccepted();
   };
   return (
-    <main className="narrow">
+    <main className="mx-auto max-w-[640px] px-4 py-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">Antes de começar</CardTitle>

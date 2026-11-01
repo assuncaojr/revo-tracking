@@ -1,17 +1,13 @@
-/* Ordem das camadas: o CSS antigo (legacy) vence o reset do Tailwind, mas perde para as classes
-   utilitárias, que é onde os componentes shadcn guardam o visual. Migração gradual (D30). */
-@layer theme, base, legacy, components, utilities;
-
+/* Visual do painel: Tailwind v4 + shadcn/ui (D30). As visualizações de dados próprias ficam em charts.css. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
-@import "./styles.css" layer(legacy);
 @import "./charts.css" layer(components);
 
 @custom-variant dark (&:is(.dark *));
 
 /* Tokens do shadcn com a paleta do painel: grafite e cinza na interface; cor só nos dados
-   (azul = a favor da gestão, vermelho = contra), definida em styles.css. */
+   (azul = a favor da gestão, vermelho = contra), usada por charts.css e pelos gráficos. */
 :root {
   --radius: 0.625rem;
   --background: #f6f7f9;
@@ -79,6 +75,42 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  /* Tailwind v4 tira o cursor de mão dos botões; no painel tudo que é clicável mostra a mão */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Marca d'água com nome, e-mail e horário em toda a tela, inclusive impressa */
+.watermark {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  background-repeat: repeat;
+}
+
+/* Impressão do boletim: só o conteúdo, cores e marca d'água preservadas */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  [data-slot="card"],
+  tr {
+    break-inside: avoid;
   }
 }

@@ -2,10 +2,14 @@
 
 O piloto será apresentado ao cliente na tela, então o visual pesa tanto quanto o dado. Este plano leva todo o painel (`spa/`) para Tailwind v4 + shadcn/ui sem parar o resto do calendário.
 
-## Onde estamos (01/11/2026)
-- **Feito:** base instalada (Tailwind v4, shadcn, fonte Geist, tema com a paleta do painel) e moldura migrada (login, cabeçalho, abas, aviso de não garantia).
-- **Convivência:** o CSS antigo (`src/styles.css`) está numa camada própria (`legacy`) e congelado. Regras em `spa/README.md` → "Visual (D30)".
-- **Problema aberto:** o boletim impresso sai em branco no navegador do responsável. No Chromium headless o PDF sai completo, então a causa depende do navegador ou do diálogo de impressão (ver fase 2).
+## Onde estamos
+**Concluída em 01/11/2026.** Todas as telas em shadcn; `src/styles.css` e a camada de convivência foram apagados. Regras de uso em `spa/README.md` → "Visual (D30)".
+
+Ajustes feitos na execução:
+- **Visualizações de dados em `src/charts.css`**, não em classes utilitárias: barras de balanço, cruzamentos, rankings e lista de bairros não têm equivalente no shadcn e ficariam ilegíveis em utilitários. O arquivo usa os tokens e é permanente.
+- **Ficha do bairro continua como página**, não em Sheet: mesmo comportamento de antes.
+- **Excluir alerta:** cancelar o diálogo do motivo agora desiste da exclusão (antes, cancelar o `prompt` excluía sem motivo).
+- **Pendente:** o boletim impresso sai em branco no Chrome do responsável (no Chromium headless o PDF sai completo). Investigar à parte (item 2.2).
 
 ## Princípios
 1. **Mesmo comportamento, visual novo.** Nada muda na API, nos contratos ou nas regras (n < 30 oculto, margem escondida por padrão, cor só nos dados). Mudança de conteúdo vira item separado em `decisoes.md`.

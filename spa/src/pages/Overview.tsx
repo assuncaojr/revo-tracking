@@ -17,7 +17,7 @@ export function polarityColor(ind: { favorable: boolean }): string {
   return ind.favorable ? "var(--fav)" : "var(--unfav)";
 }
 const STRATUM_COLORS = ["var(--series-2)", "var(--series-3)"];
-const OTHER_STRATUM = "var(--text-muted)";
+const OTHER_STRATUM = "var(--muted-foreground)";
 
 export function stratumColor(strata: string[], name: string): string {
   const i = strata.indexOf(name);

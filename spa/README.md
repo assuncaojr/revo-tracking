@@ -17,13 +17,12 @@ Cor só nos dados: azul = a favor da gestão, vermelho = contra, cinza = dentro 
 Em todo acesso: login com senha + código do app autenticador, aviso de que o sistema não garante eleição no primeiro acesso (D16) e marca d'água com nome, e-mail e horário.
 
 ## Visual (D30)
-Migração gradual para shadcn/ui. Regras:
-- **Página nova ou reescrita:** só componentes de `src/components/ui/` e classes do Tailwind. Componente que falta: `pnpm dlx shadcn@latest add <nome>` (confira o diff: o CLI já tentou instalar um pacote npm `cn` no lugar de `src/lib/utils.ts`).
-- **Página antiga:** continua em `src/styles.css`, que está congelado (só correção). Ao migrar uma página, apague as regras que ficaram sem uso.
-- O CSS antigo fica na camada `legacy` (`src/index.css`): vence o reset do Tailwind e perde para os utilitários. Seletores de elemento dele (`button`, `input`, `table`…) pulam quem tem `data-slot`, a marca dos componentes shadcn.
-- Tokens: os do shadcn em `src/index.css` (`--primary`, `--muted`…); os do CSS antigo foram renomeados para não colidir (`--ink`, `--ink-soft`, `--text-muted`). Cor dos dados (`--fav`, `--unfav`, `--div-*`) continua em `styles.css`.
-- Sem modo escuro por enquanto. Ícones: `lucide-react`.
-- Partes que não podem quebrar ao migrar: boletim impresso (`@media print`, classe `no-print`), marca d'água, celular (390 px).
+Tailwind v4 + shadcn/ui, fonte Geist, sem modo escuro. Ícones: `lucide-react`.
+- **Interface:** componentes de `src/components/ui/` (do shadcn, copiados para cá: podem ser editados) e as peças do painel em `src/components/`: `page.tsx` (cabeçalho de página, card de gráfico, estados de carregando/erro/vazio, aviso, número em destaque), `controls.tsx` (seleção, segmentado, legenda), `dialogs.tsx` (`confirmDialog`/`promptDialog`, no lugar de `window.confirm`/`prompt`), `strata.tsx`. Aviso de ação feita ou falha: `toast` do `sonner`.
+- **Visualizações de dados próprias** (barras de balanço, cruzamentos, rankings, lista de bairros, gráficos em SVG, mapa): `src/charts.css`, que usa os tokens. Não têm equivalente no shadcn.
+- **Tokens:** em `src/index.css`. Interface em grafite e cinza (`--primary`, `--muted`…); cor só nos dados (`--fav`, `--unfav`, `--div-*`, `--series-*`).
+- Componente que falta: `pnpm dlx shadcn@latest add <nome>` e **confira o diff**: o CLI costuma instalar um pacote npm `cn` (de terceiros) no lugar de usar `src/lib/utils.ts`, e o `sonner` traz `next-themes`. Remova os dois e troque o import para `@/lib/utils`.
+- Não podem quebrar: boletim impresso (`@media print` em `index.css`, classe `no-print`), marca d'água, celular (390 px).
 
 ## Rodar local
 ```bash
