@@ -2,6 +2,12 @@ import { useState } from "react";
 import { api, type CampaignAccess, type Flag } from "../api";
 import { duration, FLAG_LABELS, STATUS_LABELS, timeOf } from "../format";
 import { usePoll } from "../usePoll";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { promptDialog } from "@/components/dialogs";
+import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/page";
 
 /** Revisão dos alertas: aceitar (a entrevista fica) ou excluir (sai dos resultados; o dado bruto continua guardado). */
 export function Flags({ campaign }: { campaign: CampaignAccess }) {
@@ -10,70 +16,92 @@ export function Flags({ campaign }: { campaign: CampaignAccess }) {
   const canResolve = campaign.role === "admin" || campaign.role === "supervisor";
 
   const resolve = async (f: Flag, resolution: "accepted" | "excluded") => {
-    const note = resolution === "excluded" ? window.prompt("Motivo da exclusão (opcional):") ?? undefined : undefined;
+    let note: string | undefined;
+    if (resolution === "excluded") {
+      const r = await promptDialog({
+        title: "Excluir a entrevista dos resultados?",
+        description: "O dado bruto continua guardado; a entrevista só deixa de contar nos resultados.",
+        label: "Motivo da exclusão (opcional)",
+        action: "Excluir",
+        optional: true,
+        destructive: true,
+      });
+      if (r === null) return;
+      note = r || undefined;
+    }
     setBusy(f.id);
     try {
       await api.post(`/api/flags/${f.id}/resolve`, { resolution, note });
+      toast.success(resolution === "excluded" ? "Entrevista excluída dos resultados" : "Alerta aceito");
       await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
   };
 
-  if (error) return <p className="error">{error}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (error) return <ErrorState>{error}</ErrorState>;
+  if (!data) return <LoadingState />;
 
   return (
     <>
-      <h2>Alertas para revisar ({data.length})</h2>
-      <p className="muted">
-        Alerta não descarta entrevista. Aceite quando estiver tudo certo; exclua quando a entrevista não deve contar
-        nos resultados.
-      </p>
+      <PageHeader
+        title={`Alertas para revisar (${data.length})`}
+        meta="Alerta não descarta entrevista. Aceite quando estiver tudo certo; exclua quando a entrevista não deve contar nos resultados."
+      />
       {data.length === 0 ? (
-        <p>Nenhum alerta aberto.</p>
+        <EmptyState>Nenhum alerta aberto.</EmptyState>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Alerta</th>
-              <th>Detalhe</th>
-              <th>Entrevistador</th>
-              <th>Ponto</th>
-              <th>Início</th>
-              <th>Duração</th>
-              <th>Situação</th>
-              {canResolve && <th />}
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((f) => (
-              <tr key={f.id}>
-                <td>
-                  <strong>{FLAG_LABELS[f.code] ?? f.code}</strong>
-                </td>
-                <td className="muted small">{detail(f)}</td>
-                <td>{f.interviewer}</td>
-                <td>{f.point}</td>
-                <td>
-                  {new Date(f.started_at).toLocaleDateString("pt-BR")} {timeOf(f.started_at)}
-                </td>
-                <td>{duration(f.duration_s)}</td>
-                <td>{STATUS_LABELS[f.status] ?? f.status}</td>
-                {canResolve && (
-                  <td className="row">
-                    <button disabled={busy === f.id} onClick={() => resolve(f, "accepted")}>
-                      Aceitar
-                    </button>
-                    <button className="danger" disabled={busy === f.id} onClick={() => resolve(f, "excluded")}>
-                      Excluir
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Card className="py-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-4">Alerta</TableHead>
+                <TableHead>Detalhe</TableHead>
+                <TableHead>Entrevistador</TableHead>
+                <TableHead>Ponto</TableHead>
+                <TableHead>Início</TableHead>
+                <TableHead>Duração</TableHead>
+                <TableHead>Situação</TableHead>
+                {canResolve && <TableHead />}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.map((f) => (
+                <TableRow key={f.id}>
+                  <TableCell className="pl-4 font-medium">{FLAG_LABELS[f.code] ?? f.code}</TableCell>
+                  <TableCell className="text-sm whitespace-normal text-muted-foreground">{detail(f)}</TableCell>
+                  <TableCell>{f.interviewer}</TableCell>
+                  <TableCell>{f.point}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {new Date(f.started_at).toLocaleDateString("pt-BR")} {timeOf(f.started_at)}
+                  </TableCell>
+                  <TableCell className="tabular-nums">{duration(f.duration_s)}</TableCell>
+                  <TableCell>{STATUS_LABELS[f.status] ?? f.status}</TableCell>
+                  {canResolve && (
+                    <TableCell className="pr-4">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" disabled={busy === f.id} onClick={() => resolve(f, "accepted")}>
+                          Aceitar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={busy === f.id}
+                          onClick={() => resolve(f, "excluded")}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       )}
     </>
   );

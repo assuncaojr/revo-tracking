@@ -11,7 +11,7 @@ export function Progress({ campaignId }: { campaignId: string }) {
   return (
     <>
       <p className="mb-3 text-sm text-muted-foreground">{data.total} entrevistas completas válidas no total.</p>
-      <StrataProgress strata={data.strata} />
+      <StrataProgress strata={data.strata.map((s) => ({ ...s, done: s.today }))} />
     </>
   );
 }

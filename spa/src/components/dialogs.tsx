@@ -23,6 +23,9 @@ type PromptOptions = {
   defaultValue?: string;
   action?: string;
   inputMode?: "text" | "numeric";
+  /** Aceita campo vazio (devolve ""). Cancelar continua devolvendo null. */
+  optional?: boolean;
+  destructive?: boolean;
   validate?: (v: string) => string | null;
 };
 type Request =
@@ -90,7 +93,7 @@ function PromptDialog({ req, close }: { req: Extract<Request, { kind: "prompt" }
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const v = value.trim();
-    const problem = req.opts.validate?.(v) ?? (v ? null : "Preencha o campo.");
+    const problem = req.opts.validate?.(v) ?? (v || req.opts.optional ? null : "Preencha o campo.");
     if (problem) return setError(problem);
     req.resolve(v);
     close();
@@ -129,7 +132,9 @@ function PromptDialog({ req, close }: { req: Extract<Request, { kind: "prompt" }
             <Button type="button" variant="outline" onClick={() => (req.resolve(null), close())}>
               Cancelar
             </Button>
-            <Button type="submit">{req.opts.action ?? "Salvar"}</Button>
+            <Button type="submit" variant={req.opts.destructive ? "destructive" : "default"}>
+              {req.opts.action ?? "Salvar"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
