@@ -2,9 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Estimate, Indicator, Overview as OverviewData } from "../api";
 import { changeColor } from "../tone";
 
-// Cores por entidade, em ordem fixa (paleta validada para daltonismo; ver skill de dataviz):
-// o total é sempre azul; cada estrato mantém a sua cor em todos os gráficos.
-const TOTAL_COLOR = "var(--series-1)";
+// Cores por entidade, em ordem fixa (paleta validada para daltonismo; ver skill de dataviz): cada estrato mantém
+// a sua cor em todos os gráficos. O total vai em grafite: azul e vermelho são reservados para "a favor" e "contra"
+// a gestão.
+const TOTAL_COLOR = "var(--text)";
+
+/** Cor do sentido do indicador: azul se valor maior é a favor da gestão, vermelho se é contra. */
+export function polarityColor(ind: { favorable: boolean }): string {
+  return ind.favorable ? "var(--fav)" : "var(--unfav)";
+}
 const STRATUM_COLORS = ["var(--series-2)", "var(--series-3)"];
 const OTHER_STRATUM = "var(--muted)";
 
@@ -63,10 +69,21 @@ export function IndicatorTiles({
             </span>
           ) : (
             <>
-              <span className="tile-value">
-                {fmt(ind.current.value, ind.mean)}
-                {ind.mean && ind.scale && <span className="tile-unit"> de {ind.scale[1]}</span>}
-              </span>
+              <div className="tile-top">
+                <span className="tile-value">
+                  {fmt(ind.current.value, ind.mean)}
+                  {ind.mean && ind.scale && <span className="tile-unit"> de {ind.scale[1]}</span>}
+                </span>
+                <Sparkline ind={ind} />
+              </div>
+              <div className="tile-gauge" aria-hidden>
+                <div
+                  style={{
+                    width: `${ind.mean && ind.scale ? (100 * ind.current.value) / ind.scale[1] : ind.current.value}%`,
+                    background: polarityColor(ind),
+                  }}
+                />
+              </div>
               <span className="tile-meta">
                 {margin(ind.current, ind.mean)} · {ind.current.n} entrevistas
               </span>
@@ -77,6 +94,89 @@ export function IndicatorTiles({
       ))}
     </div>
   );
+}
+
+/** Minilinha da média de 3 dias no período, na cor do sentido do indicador. */
+function Sparkline({ ind }: { ind: Indicator }) {
+  const vals = ind.series.map((d) => d.rolling.value).filter((v): v is number => v != null);
+  if (vals.length < 2) return null;
+  const w = 72;
+  const h = 28;
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  const span = Math.max(hi - lo, ind.mean ? 0.5 : 4); // achata oscilação mínima
+  const mid = (lo + hi) / 2;
+  const y = (v: number) => h - 3 - ((v - (mid - span / 2)) / span) * (h - 6);
+  const d = vals.map((v, i) => `${i ? "L" : "M"}${(i * (w - 4)) / (vals.length - 1) + 2},${y(v)}`).join("");
+  const last = vals[vals.length - 1];
+  return (
+    <svg className="tile-spark" width={w} height={h} aria-hidden>
+      <path d={d} fill="none" stroke={polarityColor(ind)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={w - 2} cy={y(last)} r={3} fill={polarityColor(ind)} />
+    </svg>
+  );
+}
+
+// --- resumo em balanços ---
+
+/** Cada pergunta como uma barra: a favor da gestão (azul) | meio (cinza) | contra (vermelho), com a marca da metade. */
+export function Balances({ data }: { data: OverviewData }) {
+  if (!data.balances?.length) return null;
+  return (
+    <div className="card balances">
+      {data.balances.map((b) => (
+        <div key={b.question}>
+          <div className="balance-head">
+            <strong>{b.label}</strong>
+            <span className="muted small">{b.n} entrevistas · a linha marca a metade</span>
+          </div>
+          {b.favorable && b.unfavorable && b.other ? (
+            <>
+              <div className="balance-bar">
+                <div className="fav" style={{ width: `${b.favorable.value}%` }} title={`${b.labels.favorable}: ${Math.round(b.favorable.value)}% ± ${Math.round((b.favorable.high - b.favorable.low) / 2)} pts`}>
+                  {b.favorable.value >= 8 && `${Math.round(b.favorable.value)}%`}
+                </div>
+                <div className="mid" style={{ width: `${b.other.value}%` }} title={`${b.labels.other}: ${Math.round(b.other.value)}%`}>
+                  {b.other.value >= 10 && `${Math.round(b.other.value)}%`}
+                </div>
+                <div className="unfav" style={{ width: `${b.unfavorable.value}%` }} title={`${b.labels.unfavorable}: ${Math.round(b.unfavorable.value)}% ± ${Math.round((b.unfavorable.high - b.unfavorable.low) / 2)} pts`}>
+                  {b.unfavorable.value >= 8 && `${Math.round(b.unfavorable.value)}%`}
+                </div>
+                <span className="balance-half" />
+              </div>
+              <div className="balance-legend">
+                <span>
+                  <strong>{b.labels.favorable}</strong> {Math.round(b.favorable.value)}%
+                </span>
+                <span className="muted">
+                  {b.labels.other} {Math.round(b.other.value)}%
+                </span>
+                <span className="r">
+                  <strong>{b.labels.unfavorable}</strong> {Math.round(b.unfavorable.value)}%
+                </span>
+              </div>
+              <BalanceVerdict b={b} />
+            </>
+          ) : (
+            <p className="muted small">{b.suppressed ? `Poucas entrevistas (${b.n}) para mostrar.` : "Sem entrevistas."}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Frase de leitura: quem está à frente, e se a diferença passa da margem. */
+function BalanceVerdict({ b }: { b: OverviewData["balances"][number] }) {
+  const f = b.favorable!;
+  const u = b.unfavorable!;
+  const overlap = f.low <= u.high && u.low <= f.high;
+  const text = overlap
+    ? `Empate técnico entre “${b.labels.favorable.toLowerCase()}” e “${b.labels.unfavorable.toLowerCase()}”: a diferença cabe na margem.`
+    : f.value > u.value
+      ? `“${b.labels.favorable}” à frente por ${Math.round(f.value - u.value)} pontos.`
+      : `“${b.labels.unfavorable}” à frente por ${Math.round(u.value - f.value)} pontos.`;
+  return <p className="small" style={{ margin: "4px 0 0" }}>{text}</p>;
 }
 
 function Change({ ind }: { ind: Indicator }) {
@@ -149,6 +249,7 @@ export function TrendChart({ ind }: { ind: Indicator }) {
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
   const [wrapRef, W] = useWidth<HTMLDivElement>(760);
+  const color = polarityColor(ind);
   const s = ind.series;
   const [y0, y1, tickStep] = useMemo(() => niceDomain(ind), [ind]);
   const iw = W - PAD.left - PAD.right;
@@ -230,7 +331,15 @@ export function TrendChart({ ind }: { ind: Indicator }) {
                 </text>
               ) : null,
             )}
-            {band && <path d={band} fill={TOTAL_COLOR} opacity={0.1} />}
+            {!ind.mean && y0 < 50 && y1 > 50 && (
+              <g>
+                <line className="half" x1={PAD.left} x2={W - PAD.right} y1={y(50)} y2={y(50)} />
+                <text className="half-label" x={W - PAD.right + 6} y={y(50) - 8}>
+                  metade
+                </text>
+              </g>
+            )}
+            {band && <path d={band} fill={color} opacity={0.12} />}
             {s.map((d, i) =>
               d.daily.value != null ? (
                 <circle
@@ -242,10 +351,10 @@ export function TrendChart({ ind }: { ind: Indicator }) {
                 />
               ) : null,
             )}
-            <path d={line} fill="none" stroke={TOTAL_COLOR} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+            <path d={line} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
             {last && (
               <>
-                <circle cx={x(last.i)} cy={y(last.d.rolling.value!)} r={4} fill={TOTAL_COLOR} className="ring" />
+                <circle cx={x(last.i)} cy={y(last.d.rolling.value!)} r={4.5} fill={color} className="ring" />
                 <text className="end-label" x={x(last.i) + 10} y={y(last.d.rolling.value!)} dominantBaseline="middle">
                   {fmt(last.d.rolling.value, ind.mean)}
                 </text>

@@ -284,6 +284,18 @@ export interface Overview {
   strata: string[];
   indicators: Indicator[];
   grid: { key: string; text: string; options: QOption[]; rows: GridRow[] } | null;
+  balances: Balance[];
+}
+
+export interface Balance {
+  label: string;
+  question: string;
+  n: number;
+  suppressed?: boolean;
+  labels: { favorable: string; unfavorable: string; other: string };
+  favorable?: { value: number; low: number; high: number };
+  unfavorable?: { value: number; low: number; high: number };
+  other?: { value: number; low: number; high: number };
 }
 
 // --- cruzamentos, segmentos, rankings e mapas (D26, D27) ---

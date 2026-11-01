@@ -10,7 +10,7 @@ import type {
 import { usePoll } from "../usePoll";
 import { Crosstab, Rankings, Segments } from "./Insights";
 import { MapView } from "./MapView";
-import { GridChart, IndicatorTiles, StrataChart, TrendChart } from "./Overview";
+import { Balances, GridChart, IndicatorTiles, StrataChart, TrendChart } from "./Overview";
 
 type View = "overview" | "insights" | "map" | "questions";
 
@@ -79,6 +79,7 @@ function OverviewView({ campaign }: { campaign: CampaignAccess }) {
         mínimo de incerteza.
         {data.min_cell != null && ` Grupos com menos de ${data.min_cell} entrevistas ficam ocultos.`}
       </p>
+      <Balances data={data} />
       <IndicatorTiles data={data} selected={ind.key} onSelect={setSelected} />
       <TrendChart ind={ind} />
       <StrataChart data={data} />
