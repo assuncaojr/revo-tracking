@@ -29,6 +29,7 @@ Em 31/10/2026 o responsável leu todos os documentos e concordou com eles. As pr
 | D23 | **Questionário do piloto aprovado** (v1, `09-piloto-caxias.md`) | Aprovado pelo responsável em 31/10/2026. |
 | D24 | **Piloto: 6 Samsung Galaxy A14 novos, 4 GB** (4 + 2 reserva; ~R$ 4.800; antes eram "usados", trocado em 31/10/2026 pelo preço do novo); entrevistadores por **diária de R$ 80 + R$ 20 de combustível** (moto própria); custo inicial 100% do responsável | Definido em 31/10/2026. Equipe de campo do piloto: R$ 5.600 (14 dias × 4 × R$ 100). |
 | D22 | `tracking_reference/` e `tse/` ficam fora do controle de versão (`.gitignore`) | Contêm nomes de entrevistados e arquivos grandes. |
+| D25 | **Cadastros no painel antes do ensaio técnico** (01/11/2026): entrevistadores (PIN, desativar), aparelhos (código de cadastro, revogar), estratos/bairros/pontos com meta diária, usuários do painel e envio de nova versão do questionário. Admin faz tudo; supervisão só entrevistadores e aparelhos. Nada se apaga: desativa (entrevistas antigas apontam para os cadastros) | Estava na especificação (§6) mas fora do calendário; o ensaio da S6 já precisa cadastrar aparelhos e equipe sem linha de comando. |
 
 ## Histórico (respondidas em 30/10/2026)
 | Pergunta | Resposta |
