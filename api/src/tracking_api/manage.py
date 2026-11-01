@@ -7,6 +7,7 @@ Toda alteração vai para a auditoria.
 
 import secrets
 import uuid
+from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -23,6 +24,7 @@ DbSession = Annotated[Session, Depends(get_session)]
 
 ADMIN = ("admin",)
 FIELD = ("admin", "supervisor")  # equipe de campo: entrevistadores e aparelhos
+STAFF = models.ROLES_STAFF  # marcos da campanha: toda a equipe
 
 
 def _get(s: Session, model, obj_id, cid: uuid.UUID, what: str):
@@ -377,3 +379,42 @@ def questionnaire_upload(cid: uuid.UUID, definition: dict, user: AuthUser, s: Db
     audit(s, "questionnaire_loaded", user.id, cid, qv_id=str(qv.id), qid=qv.qid, version=qv.version)
     s.commit()
     return {"id": str(qv.id), "qid": qv.qid, "version": qv.version}
+
+
+# --- marcos da campanha (D29) ---
+
+class EventIn(BaseModel):
+    day: date
+    title: str = Field(min_length=2, max_length=80)
+    note: str | None = Field(default=None, max_length=500)
+
+
+@router.get("/events")
+def events(cid: uuid.UUID, user: AuthUser, s: DbSession) -> list[dict]:
+    membership(s, user, cid, STAFF)
+    return [{"id": e.id, "day": e.day.isoformat(), "title": e.title, "note": e.note, "created_by": e.created_by}
+            for e in s.scalars(select(models.CampaignEvent).where(models.CampaignEvent.campaign_id == cid)
+                               .order_by(models.CampaignEvent.day.desc()))]
+
+
+@router.post("/events")
+def event_add(cid: uuid.UUID, body: EventIn, user: AuthUser, s: DbSession) -> dict:
+    """Marco aparece para o cliente no gráfico de evolução: a equipe escreve, o cliente só lê."""
+    membership(s, user, cid, STAFF)
+    e = models.CampaignEvent(campaign_id=cid, day=body.day, title=body.title.strip(),
+                             note=(body.note or "").strip() or None, created_by=f"{user.name} <{user.email}>")
+    s.add(e)
+    s.flush()
+    audit(s, "event_added", user.id, cid, event_id=e.id, day=body.day.isoformat(), title=e.title)
+    s.commit()
+    return {"id": e.id}
+
+
+@router.post("/events/{eid}/remove")
+def event_remove(cid: uuid.UUID, eid: int, user: AuthUser, s: DbSession) -> dict:
+    membership(s, user, cid, STAFF)
+    e = _get(s, models.CampaignEvent, eid, cid, "marco")
+    audit(s, "event_removed", user.id, cid, event_id=eid, day=e.day.isoformat(), title=e.title)
+    s.delete(e)
+    s.commit()
+    return {"ok": True}

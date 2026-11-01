@@ -5,11 +5,12 @@ Usuários da equipe/cliente, auditoria e dados do TSE entram na semana do painel
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -265,3 +266,16 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(50))
     details: Mapped[dict] = mapped_column(JSONB, default=dict)
     at: Mapped[datetime] = _now()
+
+
+class CampaignEvent(Base):
+    """Marco da campanha (inauguração, debate, crise) para ler a evolução dos resultados. Cadastrado pela equipe."""
+
+    __tablename__ = "campaign_event"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    campaign_id: Mapped[uuid.UUID] = _campaign_fk()
+    day: Mapped[date] = mapped_column(Date)
+    title: Mapped[str] = mapped_column(String(80))
+    note: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = _now()

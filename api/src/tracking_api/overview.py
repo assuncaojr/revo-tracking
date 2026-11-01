@@ -260,6 +260,11 @@ def overview(cid: uuid.UUID, user: AuthUser, s: DbSession, period: Period = "7d"
         "n": n_window, "n_total": len(rows), "weighted": False, "min_cell": settings().min_cell if client else None,
         "strata": strata, "indicators": out_indicators, "grid": grid, "balances": balances,
     }
+    out["events"] = [{"day": e.day.isoformat(), "title": e.title, "note": e.note}
+                     for e in s.scalars(select(models.CampaignEvent)
+                                        .where(models.CampaignEvent.campaign_id == cid,
+                                               models.CampaignEvent.day >= start, models.CampaignEvent.day <= today)
+                                        .order_by(models.CampaignEvent.day))]
     out["headlines"] = headlines(c, out)
     return out
 
