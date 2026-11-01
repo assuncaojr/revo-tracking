@@ -19,6 +19,15 @@ PILOT_SETTINGS = {
         {"code": "desaprova_e_avalia_bem", "condition": {"all": [
             {"key": "G1", "in": ["desaprova"]}, {"key": "G2", "in": ["otima", "boa"]}]}},
     ],
+    # Indicadores-chave do panorama de resultados (overview.py)
+    "indicators": [
+        {"key": "approval", "label": "Aprova a gestão", "question": "G1", "values": ["aprova"]},
+        {"key": "positive", "label": "Avaliação ótima ou boa", "question": "G2", "values": ["otima", "boa"]},
+        {"key": "negative", "label": "Avaliação ruim ou péssima", "question": "G2", "values": ["ruim", "pessima"]},
+        {"key": "score", "label": "Nota média da gestão", "question": "G3", "mean": True},
+        {"key": "continue", "label": "Quer que continue", "question": "E1", "values": ["continuar"]},
+        {"key": "change", "label": "Quer mudança", "question": "E1", "values": ["mudar"]},
+    ],
 }
 
 PILOT_STRATA = {

@@ -226,6 +226,8 @@ def results(cid: uuid.UUID, user: AuthUser, s: DbSession,
     for qd in definition["questions"]:
         if qd["type"] not in ("single", "scale", "grid"):
             continue  # abertas, nomes e contato não entram no agregado (abertas: categorização na fase 3)
+        if qd["role"] in ("consent", "filter", "contact"):
+            continue  # entre as completas dão sempre o mesmo resultado (quem entrou disse sim)
         opts = qd.get("options") or lists.get(qd.get("options_list", ""), [])
         labels = {o["value"]: o["label"] for o in opts} | nonresp | ({"other": "Outro"} if qd.get("allow_other") else {})
         items = [None]

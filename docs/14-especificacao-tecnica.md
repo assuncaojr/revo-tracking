@@ -157,6 +157,7 @@ Todas as tabelas de campanha têm `campaign_id` desde o início (D10), mesmo com
 
 **Cliente**
 - `GET /results/summary` — bruto do dia e acumulado por pergunta (só agregados; células com n < 30 ocultadas)
+- `GET /results/overview` — panorama: indicadores-chave (configurados em `campaign.settings.indicators`) com margem de erro (Wilson, 95%) e variação contra os 7 dias anteriores, série diária e média móvel de 3 dias, estratos, grade de áreas
 - `GET /field/progress` — feitas × meta por estrato
 - `POST /questionnaires/{id}/approve`
 - Primeiro acesso exige aceite do aviso de não garantia (D16), registrado
