@@ -1,6 +1,7 @@
 // Motor do questionário em Kotlin puro, sem Android SDK.
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 java {

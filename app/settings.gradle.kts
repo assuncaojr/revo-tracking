@@ -18,3 +18,4 @@ rootProject.name = "tracking-app"
 
 include(":core:model")
 include(":engine")
+include(":app")
