@@ -1,9 +1,21 @@
 # spa — painel interno e painel do cliente
 
-React + TypeScript (Vite). Uma aplicação, dois públicos separados por papel:
-- **Equipe:** publicar questionário, cadastros, "campo agora", revisão de flags.
-- **Cliente (só leitura):** resultados agregados, progresso do campo, aprovação do questionário (prévia de leitura: perguntas, condições e fluxo por extenso), aviso de não garantia no primeiro acesso.
+React 19 + TypeScript + Vite, sem biblioteca visual. Uma aplicação, dois públicos separados por papel:
 
-Especificação: `docs/02-arquitetura.md` (o que cada público vê), `docs/14-especificacao-tecnica.md` §6.
+| Aba | Equipe (admin, supervisor, analista) | Cliente (coordenação, leitura) |
+|---|---|---|
+| Campo agora | produção por entrevistador, aparelhos, cotas do dia (atualiza a cada minuto) | — |
+| Alertas | revisar: aceitar ou excluir a entrevista (admin e supervisor) | — |
+| Resultados | bruto, total e por estrato | idem, com grupos de menos de 30 entrevistas ocultos |
+| Progresso | feitas × meta por estrato | idem |
+| Questionário | prévia de leitura; publicação é do admin | prévia e **aprovação** (coordenação) |
 
-*Ainda não implementado (semana 5 do plano).*
+Em todo acesso: login com senha + código do app autenticador, aviso de que o sistema não garante eleição no primeiro acesso (D16) e marca d'água com nome, e-mail e horário.
+
+## Rodar local
+```bash
+pnpm install
+pnpm dev            # http://localhost:5173 ; /api vai para o núcleo em localhost:8000
+pnpm build          # tipos + build de produção em dist/
+```
+Usuário do painel: `cd ../api && uv run tracking-admin user-add --campaign <id> --email ... --name ... --role admin` (pede a senha e mostra a chave para o app autenticador).
