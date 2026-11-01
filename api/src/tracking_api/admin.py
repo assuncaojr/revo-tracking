@@ -143,6 +143,31 @@ def publish_questionnaire(s: Session, qv_id: uuid.UUID):
     qv.published_at = datetime.now(UTC)
 
 
+def add_user(s: Session, email: str, name: str, password: str, campaign_id: uuid.UUID, role: str) -> tuple[models.User, str]:
+    """Usuário do painel com papel numa campanha. Devolve o segredo TOTP (mostrado uma vez, para o app autenticador)."""
+    from tracking_api import web_auth  # evita import circular (web_auth usa a configuração do FastAPI)
+
+    if role not in models.ROLES_STAFF + models.ROLES_CLIENT:
+        raise AdminError(f"papel inválido; use um de {models.ROLES_STAFF + models.ROLES_CLIENT}")
+    if len(password) < 10:
+        raise AdminError("senha precisa de ao menos 10 caracteres")
+    email = email.strip().lower()
+    user = s.scalar(select(models.User).where(models.User.email == email))
+    secret = None
+    if user is None:
+        secret = web_auth.new_totp_secret()
+        user = models.User(email=email, name=name, password_hash=web_auth.hash_password(password),
+                           totp_secret_enc=security.encrypt(secret))
+        s.add(user)
+        s.flush()
+    if s.scalar(select(models.Membership).where(models.Membership.user_id == user.id,
+                                                models.Membership.campaign_id == campaign_id)):
+        raise AdminError("usuário já é membro desta campanha")
+    s.add(models.Membership(user_id=user.id, campaign_id=campaign_id, role=role))
+    s.flush()
+    return user, secret
+
+
 def seed_pilot(s: Session, questionnaire_path: Path) -> models.Campaign:
     """Campanha do piloto de Caxias: estratos, bairros, um ponto por bairro, questionário v1 aprovado e publicado."""
     c = create_campaign(s, "Piloto Caxias 2027", municipality_code="07579", settings=PILOT_SETTINGS)

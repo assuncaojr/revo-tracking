@@ -36,9 +36,10 @@ def verify_pin(pin: str, salt: str, expected_hex: str, iterations: int) -> bool:
 
 
 def _fernet() -> Fernet:
+    """Cifra de dados sensíveis em repouso: contato do entrevistado e segredo TOTP do painel."""
     key = settings().contact_key
     if not key:
-        raise RuntimeError("TRK_CONTACT_KEY não configurada: contatos não podem ser gravados sem cifragem")
+        raise RuntimeError("TRK_CONTACT_KEY não configurada: dados sensíveis não podem ser gravados sem cifragem")
     return Fernet(key.encode())
 
 

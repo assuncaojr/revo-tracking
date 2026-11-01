@@ -209,3 +209,59 @@ class QualityFlag(Base):
     resolved_by: Mapped[str | None] = mapped_column(String(200))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolution: Mapped[str | None] = mapped_column(String(20))  # accepted | excluded
+
+
+# --- Painel: equipe e cliente (docs/10-seguranca.md) ---
+
+ROLES_STAFF = ("admin", "supervisor", "analyst")
+ROLES_CLIENT = ("client_coord", "client_reader")
+
+
+class User(Base):
+    """Pessoa que entra no painel (equipe ou cliente). Senha + TOTP obrigatórios."""
+
+    __tablename__ = "app_user"
+    id: Mapped[uuid.UUID] = _uuid()
+    email: Mapped[str] = mapped_column(String(200), unique=True)
+    name: Mapped[str] = mapped_column(String(200))
+    password_hash: Mapped[str] = mapped_column(String(300))
+    totp_secret_enc: Mapped[bytes] = mapped_column(LargeBinary)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = _now()
+
+
+class Membership(Base):
+    """Papel de um usuário numa campanha. Cliente só enxerga a(s) própria(s) campanha(s) (D10, D18)."""
+
+    __tablename__ = "membership"
+    __table_args__ = (UniqueConstraint("user_id", "campaign_id"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"), index=True)
+    campaign_id: Mapped[uuid.UUID] = _campaign_fk()
+    role: Mapped[str] = mapped_column(String(20))  # admin | supervisor | analyst | client_coord | client_reader
+    # Aviso de que o sistema não garante eleição (D16), aceito no primeiro acesso
+    disclaimer_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WebSession(Base):
+    """Sessão do painel (cookie). Só vale depois do TOTP."""
+
+    __tablename__ = "web_session"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id"), index=True)
+    created_at: Mapped[datetime] = _now()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    totp_ok: Mapped[bool] = mapped_column(Boolean, default=False)
+    totp_attempts: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class AuditLog(Base):
+    """Quem fez o quê, e quando (login, aprovação, exclusão, publicação). Sem rota de apagar."""
+
+    __tablename__ = "audit_log"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"), index=True)
+    campaign_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("campaign.id"), index=True)
+    action: Mapped[str] = mapped_column(String(50))
+    details: Mapped[dict] = mapped_column(JSONB, default=dict)
+    at: Mapped[datetime] = _now()

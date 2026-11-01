@@ -31,3 +31,10 @@ build/
 local.properties
 *.jks
 *.keystore
+
+# Capturas do navegador de teste
+.playwright-mcp/
+
+# Node
+spa/node_modules/
+spa/dist/

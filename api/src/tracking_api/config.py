@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     phone_hmac_key: str = ""
     min_app_version: str = "0.1.0"
     batch_max: int = 50
+    # Cookie da sessão do painel só por HTTPS. Em produção: TRK_COOKIE_SECURE=true.
+    cookie_secure: bool = False
+    session_hours: int = 12
+    # Células de resultado com menos entrevistas que isto ficam ocultas para o cliente (docs/10-seguranca.md)
+    min_cell: int = 30
 
 
 @lru_cache

@@ -1,6 +1,7 @@
 """Linha de comando da equipe: `uv run tracking-admin <comando>`."""
 
 import argparse
+import getpass
 import json
 import secrets
 import sys
@@ -9,7 +10,7 @@ from pathlib import Path
 
 from cryptography.fernet import Fernet
 
-from tracking_api import admin
+from tracking_api import admin, web_auth
 from tracking_api.config import settings
 from tracking_api.db import session_factory
 
@@ -40,6 +41,12 @@ def main(argv: list[str] | None = None) -> int:
 
     sp = sub.add_parser("device-revoke")
     sp.add_argument("--device", type=uuid.UUID, required=True)
+
+    sp = sub.add_parser("user-add", help="usuário do painel (senha + app autenticador)")
+    sp.add_argument("--campaign", type=uuid.UUID, required=True)
+    sp.add_argument("--email", required=True)
+    sp.add_argument("--name", required=True)
+    sp.add_argument("--role", required=True, help="admin | supervisor | analyst | client_coord | client_reader")
 
     sp = sub.add_parser("questionnaire-load")
     sp.add_argument("--campaign", type=uuid.UUID, required=True)
@@ -75,6 +82,16 @@ def main(argv: list[str] | None = None) -> int:
             elif a.cmd == "device-revoke":
                 admin.revoke_device(s, a.device)
                 print("revogado")
+            elif a.cmd == "user-add":
+                password = getpass.getpass("Senha (mín. 10 caracteres): ")
+                user, secret = admin.add_user(s, a.email, a.name, password, a.campaign, a.role)
+                print(f"usuário: {user.id} ({a.role})")
+                if secret:
+                    print("Cadastre no app autenticador (Google Authenticator, Authy…):")
+                    print(f"  chave: {secret}")
+                    print(f"  ou link: {web_auth.totp_uri(secret, user.email)}")
+                else:
+                    print("usuário já existia: papel acrescentado, autenticador continua o mesmo")
             elif a.cmd == "questionnaire-load":
                 qv = admin.load_questionnaire(s, a.campaign, json.loads(a.file.read_text(encoding="utf-8")))
                 print(f"versão: {qv.id} (aguarda aprovação)")
