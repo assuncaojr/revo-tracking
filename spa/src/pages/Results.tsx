@@ -14,6 +14,15 @@ import { Method } from "./Method";
 import { Report } from "./Report";
 import { Balances, GridChart, Headlines, IndicatorTiles, TrendChart } from "./Overview";
 import { Progress } from "./Progress";
+import { FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Segmented, type Option } from "@/components/controls";
+import { EmptyState, ErrorState, LoadingState, Notice, PageHeader, Toolbar } from "@/components/page";
+
+const PERIODS: Option<"7d" | "all">[] = [
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "all", label: "Todo o período" },
+];
 
 /** Resumo (D28): o que mudou em frases, os balanços, os indicadores e a evolução. Sempre bruto, sem ponderação. */
 export function Summary({ campaign }: { campaign: CampaignAccess }) {
@@ -26,54 +35,52 @@ export function Summary({ campaign }: { campaign: CampaignAccess }) {
     5 * 60_000,
   );
   if (report) return <Report campaign={campaign} period={period} onBack={() => setReport(false)} />;
-  if (error) return <p className="error">{error}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (error) return <ErrorState>{error}</ErrorState>;
+  if (!data) return <LoadingState />;
   if (data.indicators.length === 0)
-    return <p className="muted">Esta campanha ainda não tem indicadores-chave configurados.</p>;
+    return <EmptyState>Esta campanha ainda não tem indicadores-chave configurados.</EmptyState>;
   const ind = data.indicators.find((i) => i.key === selected) ?? data.indicators[0];
   const since = new Date(`${data.start}T12:00:00`).toLocaleDateString("pt-BR");
   const last = data.last_at ? new Date(data.last_at) : null;
 
   return (
     <>
-      <div className="row between wrap page-head">
-        <h2>Resumo</h2>
-        <span className="muted small freshness">
-          {last && `Última entrevista ${last.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} · `}
-          {data.today_n} hoje
-          {updatedAt && ` · painel atualizado às ${updatedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}
-        </span>
-      </div>
-      <div className="row filters wrap">
-        <label className="row">
-          Período
-          <select value={period} onChange={(e) => setPeriod(e.target.value as "7d" | "all")}>
-            <option value="7d">Últimos 7 dias</option>
-            <option value="all">Todo o período</option>
-          </select>
-        </label>
-        <span className="muted small">
+      <PageHeader
+        title="Resumo"
+        meta={
+          <>
+            {last && `Última entrevista ${last.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} · `}
+            {data.today_n} hoje
+            {updatedAt && ` · painel atualizado às ${updatedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}
+          </>
+        }
+      >
+        <Button variant="outline" className="bg-card max-sm:w-full" onClick={() => setReport(true)}>
+          <FileText />
+          Boletim para reunião (PDF)
+        </Button>
+      </PageHeader>
+      <Toolbar>
+        <Segmented value={period} onChange={setPeriod} options={PERIODS} size="sm" />
+        <span className="text-sm text-muted-foreground">
           {data.n} entrevistas desde {since}
           {period === "7d" && data.previous && ", comparado com a semana anterior"}
         </span>
         <MarginsToggle />
-        <button className="report-btn" onClick={() => setReport(true)}>
-          Boletim para reunião (PDF)
-        </button>
-      </div>
+      </Toolbar>
       <Headlines items={data.headlines} title="O que a pesquisa mostra" />
       <Balances balances={data.balances} />
       <IndicatorTiles data={data} selected={ind.key} onSelect={setSelected} />
       <TrendChart ind={ind} events={data.events} />
       <GridChart data={data} />
-      <p className="notice small">
+      <Notice>
         <strong>Resultado bruto da pesquisa</strong>, ainda sem ajuste pelo perfil do eleitorado: mostra o que os
         entrevistados responderam e não é previsão de resultado.{" "}
         {showMargins
           ? "A margem de erro (95%) vale para uma amostra aleatória e é o mínimo de incerteza."
           : "“Empate técnico” e “estável” querem dizer que a diferença é pequena demais para afirmar com segurança."}
         {data.min_cell != null && ` Grupos com menos de ${data.min_cell} entrevistas ficam ocultos.`}
-      </p>
+      </Notice>
     </>
   );
 }

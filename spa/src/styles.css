@@ -83,16 +83,6 @@ table.compact input.coord { width: 110px; }
 .segmented button.active { background: var(--ink-soft); font-weight: 600; }
 .filters { margin: 4px 0 12px; flex-wrap: wrap; gap: 16px; }
 
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin: 16px 0; }
-.tile { display: grid; gap: 4px; text-align: left; padding: 12px 14px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); align-content: start; }
-.tile.selected { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
-.tile-label { font-size: 13px; color: var(--text-muted); }
-.tile-value { font-size: 30px; font-weight: 650; line-height: 1.1; }
-.tile-unit { font-size: 14px; font-weight: 400; color: var(--text-muted); }
-.tile-meta { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.tile-change { font-size: 12px; color: var(--text-muted); }
-.tile-change.strong { color: var(--text); font-weight: 600; }
-.tile-empty { font-size: 14px; color: var(--text-muted); padding: 8px 0; }
 
 .chart-card { margin: 12px 0; }
 .chart-card h3 { margin-bottom: 2px; }
@@ -105,20 +95,12 @@ table.compact input.coord { width: 110px; }
 .segments th[scope="row"] { color: var(--text); font-size: 14px; text-transform: none; letter-spacing: 0; }
 
 /* Resumo em balanços e blocos com a cor do sentido */
-.tile-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
 
 /* Resumo, bairros, detalhes (D28) */
 .page-head { margin-bottom: 4px; gap: 8px; }
 .page-head h2 { margin-bottom: 0; }
 .page-head p { margin: 4px 0 0; }
 .wrap { flex-wrap: wrap; }
-.toggle { gap: 6px; color: var(--text-muted); cursor: pointer; }
-.toggle input { margin: 0; }
-.headlines { margin: 12px 0; border-left: 4px solid var(--text); }
-.headlines h3 { margin-bottom: 8px; }
-.headlines ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
-.headlines li { display: grid; grid-template-columns: 12px 1fr; gap: 10px; align-items: baseline; font-size: 16px; line-height: 1.4; }
-.headlines li i { width: 10px; height: 10px; border-radius: 50%; transform: translateY(1px); }
 .back { margin: 4px 0 12px; }
 .hood-list { padding: 4px 0; }
 .hood-row { display: grid; grid-template-columns: 220px 1fr 150px; gap: 14px; align-items: center; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--grid-line); border-radius: 0; padding: 10px 16px; background: none; }
@@ -146,11 +128,6 @@ table.compact input.coord { width: 110px; }
   .segmented button { flex: 1 0 auto; white-space: nowrap; padding: 8px 10px; font-size: 13px; }
   .filters { gap: 10px; }
   .filters select { max-width: 60vw; }
-  .headlines li { font-size: 15px; }
-  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .tile { padding: 10px; }
-  .tile-value { font-size: 24px; }
-  .tile-change { font-size: 11px; }
   .chart-card { padding: 12px; }
   .segments th, .segments td { padding: 6px 4px; font-size: 12px; }
   .hood-row { grid-template-columns: 1fr auto; grid-template-areas: "name value" "track track"; row-gap: 8px; padding: 10px 12px; }
@@ -179,16 +156,13 @@ table.compact input.coord { width: 110px; }
   .method-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .method-numbers strong { font-size: 22px; }
 }
-.report-btn { margin-left: auto; font-weight: 600; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .report-head { margin: 12px 0 8px; }
 .report-head h1 { font-size: 24px; margin: 6px 0 4px; }
 .report-head p { margin: 2px 0; }
 .report-stamp { display: inline-block; border: 2px solid var(--unfav); color: var(--unfav); font-weight: 800; letter-spacing: 0.08em; font-size: 12px; padding: 3px 8px; border-radius: 4px; }
 .report-foot { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 8px; color: var(--text-muted); }
-.report .tile { cursor: default; }
 @media (max-width: 640px) {
-  .report-btn { margin-left: 0; width: 100%; }
 }
 
 /* Impressão do boletim: só o conteúdo, cores e marca d'água preservadas */
@@ -199,7 +173,6 @@ table.compact input.coord { width: 110px; }
   main { padding: 0; max-width: none; }
   .watermark { position: fixed; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .card, .chart-card, .balances > div, .headlines, tr { break-inside: avoid; }
-  .tile.selected { box-shadow: none; border-color: var(--line); }
+  .card, .chart-card, tr { break-inside: avoid; }
   .chart-card button.link { display: none; }
 }

@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Balance, CampaignEventItem, Estimate, Indicator, Overview as OverviewData } from "../api";
 import { useShowMargins } from "../prefs";
 import { changeColor } from "../tone";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ChartCard } from "@/components/page";
+import { Legend } from "@/components/controls";
+import { cn } from "@/lib/utils";
 
 // Cores por entidade, em ordem fixa (paleta validada para daltonismo; ver skill de dataviz): cada estrato mantém
 // a sua cor em todos os gráficos. Azul e vermelho são reservados para "a favor" e "contra" a gestão.
@@ -54,25 +60,30 @@ export function IndicatorTiles({
 }) {
   const showMargins = useShowMargins();
   return (
-    <div className="tiles">
+    <div className="my-4 grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(190px,1fr))] sm:gap-3">
       {data.indicators.map((ind) => (
         <button
           key={ind.key}
-          className={`tile${ind.key === selected ? " selected" : ""}`}
+          className={cn(
+            "tile grid content-start gap-1 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:border-foreground/30 sm:p-4",
+            ind.key === selected && "selected border-foreground ring-1 ring-foreground hover:border-foreground print:border-border print:ring-0",
+          )}
           onClick={() => onSelect(ind.key)}
           aria-pressed={ind.key === selected}
         >
-          <span className="tile-label">{ind.label}</span>
+          <span className="text-sm text-muted-foreground">{ind.label}</span>
           {ind.current.value == null ? (
-            <span className="tile-empty">
+            <span className="py-2 text-sm text-muted-foreground">
               {ind.current.suppressed ? `poucas entrevistas (${ind.current.n})` : "sem entrevistas"}
             </span>
           ) : (
             <>
-              <div className="tile-top">
-                <span className="tile-value">
+              <div className="flex items-end justify-between gap-2">
+                <span className="text-2xl leading-tight font-semibold whitespace-nowrap tabular-nums sm:text-3xl">
                   {fmt(ind.current.value, ind.mean)}
-                  {ind.mean && ind.scale && <span className="tile-unit"> de {ind.scale[1]}</span>}
+                  {ind.mean && ind.scale && (
+                    <span className="text-sm font-normal text-muted-foreground"> de {ind.scale[1]}</span>
+                  )}
                 </span>
                 <Sparkline ind={ind} />
               </div>
@@ -84,7 +95,7 @@ export function IndicatorTiles({
                   }}
                 />
               </div>
-              <span className="tile-meta">
+              <span className="text-xs text-muted-foreground tabular-nums">
                 {showMargins && `${margin(ind.current, ind.mean)} · `}
                 {ind.current.n} entrevistas
               </span>
@@ -124,12 +135,12 @@ function Sparkline({ ind }: { ind: Indicator }) {
 export function Balances({ balances }: { balances: Balance[] }) {
   if (!balances?.length) return null;
   return (
-    <div className="card balances">
+    <Card className="balances my-4 gap-6 p-4 sm:p-5">
       {balances.map((b) => (
-        <div key={b.question}>
+        <div key={b.question} className="break-inside-avoid">
           <div className="balance-head">
             <strong>{b.label}</strong>
-            <span className="muted small">{b.n} entrevistas</span>
+            <span className="text-sm text-muted-foreground">{b.n} entrevistas</span>
           </div>
           {b.favorable && b.unfavorable && b.other ? (
             <>
@@ -149,7 +160,7 @@ export function Balances({ balances }: { balances: Balance[] }) {
                 <span>
                   <strong>{b.labels.favorable}</strong> {Math.round(b.favorable.value)}%
                 </span>
-                <span className="muted">
+                <span className="text-muted-foreground">
                   {b.labels.other} {Math.round(b.other.value)}%
                 </span>
                 <span className="r">
@@ -159,11 +170,13 @@ export function Balances({ balances }: { balances: Balance[] }) {
               <BalanceVerdict b={b} />
             </>
           ) : (
-            <p className="muted small">{b.suppressed ? `Poucas entrevistas (${b.n}) para mostrar.` : "Sem entrevistas."}</p>
+            <p className="text-sm text-muted-foreground">
+              {b.suppressed ? `Poucas entrevistas (${b.n}) para mostrar.` : "Sem entrevistas."}
+            </p>
           )}
         </div>
       ))}
-    </div>
+    </Card>
   );
 }
 
@@ -177,25 +190,25 @@ function BalanceVerdict({ b }: { b: Balance }) {
     : f.value > u.value
       ? `“${b.labels.favorable}” à frente por ${Math.round(f.value - u.value)} pontos.`
       : `“${b.labels.unfavorable}” à frente por ${Math.round(u.value - f.value)} pontos.`;
-  return <p className="small" style={{ margin: "4px 0 0" }}>{text}</p>;
+  return <p className="mt-2 text-sm">{text}</p>;
 }
 
 function Change({ ind }: { ind: Indicator }) {
-  if (!ind.change) return <span className="tile-change muted">sem semana anterior para comparar</span>;
+  if (!ind.change) return <span className="text-xs text-muted-foreground">sem semana anterior para comparar</span>;
   const { diff, beyond_margin } = ind.change;
   const unit = ind.mean ? "" : " pts";
   const shown = ind.mean ? nf1.format(Math.abs(diff)) : Math.round(Math.abs(diff));
   const arrow = Math.abs(diff) < (ind.mean ? 0.05 : 0.5) ? "→" : diff > 0 ? "↑" : "↓";
   if (!beyond_margin)
     return (
-      <span className="tile-change">
+      <span className="text-xs text-muted-foreground">
         {arrow} {shown}
         {unit} na semana · estável: a variação cabe na margem
       </span>
     );
   const good = ind.favorable ? diff > 0 : diff < 0;
   return (
-    <span className="tile-change strong">
+    <span className="text-xs font-semibold">
       <span className="chip" style={{ background: changeColor(diff, ind.favorable) }}>
         {arrow} {shown}
         {unit}
@@ -280,47 +293,48 @@ export function TrendChart({ ind, events = [] }: { ind: Indicator; events?: Camp
   const hoverMarks = hover != null ? marks.filter((m) => m.i === hover) : [];
 
   return (
-    <div className="chart-card card">
-      <div className="row between">
-        <div>
-          <h3>{ind.label}: evolução</h3>
-          <p className="muted small">
-            Linha: média dos últimos 3 dias, com a faixa da margem de erro. Pontos: cada dia sozinho (oscilam mais).
-            {marks.length > 0 && " Números: marcos da campanha."}
-          </p>
-        </div>
-        <button className="link" onClick={() => setTable(!table)}>
+    <ChartCard
+      title={`${ind.label}: evolução`}
+      description={
+        <>
+          Linha: média dos últimos 3 dias, com a faixa da margem de erro. Pontos: cada dia sozinho (oscilam mais).
+          {marks.length > 0 && " Números: marcos da campanha."}
+        </>
+      }
+      action={
+        <Button variant="link" size="sm" className="no-print px-0" onClick={() => setTable(!table)}>
           {table ? "ver gráfico" : "ver em tabela"}
-        </button>
-      </div>
+        </Button>
+      }
+    >
       {pts.length === 0 && !table ? (
-        <p className="muted">Ainda não há entrevistas suficientes para mostrar a evolução.</p>
+        <p className="text-sm text-muted-foreground">Ainda não há entrevistas suficientes para mostrar a evolução.</p>
       ) : table ? (
-        <table className="compact">
-          <thead>
-            <tr>
-              <th>Dia</th>
-              <th className="num">Média de 3 dias</th>
-              <th className="num">Margem</th>
-              <th className="num">Só o dia</th>
-              <th className="num">Entrevistas no dia</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Dia</TableHead>
+              <TableHead className="text-right">Média de 3 dias</TableHead>
+              <TableHead className="text-right">Margem</TableHead>
+              <TableHead className="text-right">Só o dia</TableHead>
+              <TableHead className="text-right">Entrevistas no dia</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {s.map((d) => (
-              <tr key={d.day}>
-                <td>
+              <TableRow key={d.day}>
+                <TableCell>
                   {dayLabel(d.day)} {weekday(d.day)}
-                  {d.partial && <span className="muted"> (parcial)</span>}
-                </td>
-                <td className="num">{fmt(d.rolling.value, ind.mean)}</td>
-                <td className="num">{margin(d.rolling, ind.mean)}</td>
-                <td className="num">{fmt(d.daily.value, ind.mean)}</td>
-                <td className="num">{d.daily.n}</td>
-              </tr>
+                  {d.partial && <span className="text-muted-foreground"> (parcial)</span>}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{fmt(d.rolling.value, ind.mean)}</TableCell>
+                <TableCell className="text-right tabular-nums">{margin(d.rolling, ind.mean)}</TableCell>
+                <TableCell className="text-right tabular-nums">{fmt(d.daily.value, ind.mean)}</TableCell>
+                <TableCell className="text-right tabular-nums">{d.daily.n}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       ) : (
         <div className="chart-wrap" ref={wrapRef}>
           <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${ind.label}: evolução diária`}>
@@ -408,7 +422,7 @@ export function TrendChart({ ind, events = [] }: { ind: Indicator; events?: Camp
               <div>
                 Média de 3 dias: {fmt(h.rolling.value, ind.mean)} {margin(h.rolling, ind.mean)}
               </div>
-              <div className="muted">
+              <div className="text-muted-foreground">
                 Só o dia: {fmt(h.daily.value, ind.mean)} · {h.daily.n} entrevistas
               </div>
               {hoverMarks.map((m) => (
@@ -429,13 +443,13 @@ export function TrendChart({ ind, events = [] }: { ind: Indicator; events?: Camp
               <span className="mark-n">{m.n}</span>
               <span>
                 <strong>{dayLabel(m.day)}</strong> {m.title}
-                {m.note && <span className="muted"> · {m.note}</span>}
+                {m.note && <span className="text-muted-foreground"> · {m.note}</span>}
               </span>
             </li>
           ))}
         </ol>
       )}
-    </div>
+    </ChartCard>
   );
 }
 
@@ -450,34 +464,28 @@ export function GridChart({ data }: { data: OverviewData }) {
   if (!g) return null;
   const color = (i: number) => GRID_COLORS[i] ?? "var(--div-none)";
   return (
-    <div className="card chart-card">
-      <h3>{g.text}</h3>
-      <p className="muted small">Ordenado pelo saldo: quem disse que melhorou menos quem disse que piorou.</p>
-      <div className="legend">
-        {g.options.slice(0, 3).map((o, i) => (
-          <span key={o.value}>
-            <i style={{ background: color(i) }} /> {o.label}
-          </span>
-        ))}
-        {g.options.length > 3 && (
-          <span>
-            <i style={{ background: color(3) }} /> {g.options.slice(3).map((o) => o.label).join(" / ")}
-          </span>
-        )}
-      </div>
-      <table className="gridbars">
-        <thead>
-          <tr>
-            <th>Área</th>
-            <th />
-            <th className="num">Saldo</th>
-          </tr>
-        </thead>
-        <tbody>
+    <ChartCard title={g.text} description="Ordenado pelo saldo: quem disse que melhorou menos quem disse que piorou.">
+      <Legend
+        items={[
+          ...g.options.slice(0, 3).map((o, i) => ({ color: color(i), label: o.label })),
+          ...(g.options.length > 3
+            ? [{ color: color(3), label: g.options.slice(3).map((o) => o.label).join(" / ") }]
+            : []),
+        ]}
+      />
+      <Table className="gridbars">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Área</TableHead>
+            <TableHead />
+            <TableHead className="text-right">Saldo</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {g.rows.map((r) => (
-            <tr key={r.value}>
-              <td>{r.label}</td>
-              <td className="stack-cell">
+            <TableRow key={r.value} className="hover:bg-transparent">
+              <TableCell className="whitespace-normal">{r.label}</TableCell>
+              <TableCell className="stack-cell">
                 {r.pct ? (
                   <div className="stack">
                     {g.options.map((o, i) => {
@@ -496,17 +504,19 @@ export function GridChart({ data }: { data: OverviewData }) {
                     })}
                   </div>
                 ) : (
-                  <span className="muted small">{r.suppressed ? `poucas entrevistas (${r.n})` : "sem respostas"}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {r.suppressed ? `poucas entrevistas (${r.n})` : "sem respostas"}
+                  </span>
                 )}
-              </td>
-              <td className="num">
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
                 {r.balance != null ? `${r.balance > 0 ? "+" : ""}${Math.round(r.balance)}` : "—"}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </ChartCard>
   );
 }
 
@@ -518,27 +528,24 @@ const TONE_MARK: Record<string, string> = { favorable: "var(--fav)", unfavorable
 export function Headlines({ items, title }: { items: { tone: string; text: string }[]; title: string }) {
   if (!items.length) return null;
   return (
-    <div className="card headlines">
-      <h3>{title}</h3>
-      <ul>
+    <Card className="headlines my-4 gap-3 border-l-4 border-l-foreground p-4 break-inside-avoid sm:p-5">
+      <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+      <ul className="grid gap-2.5">
         {items.map((h) => (
-          <li key={h.text}>
-            <i style={{ background: TONE_MARK[h.tone] ?? TONE_MARK.neutral }} aria-hidden />
+          <li key={h.text} className="grid grid-cols-[10px_1fr] items-baseline gap-3 text-[15px] leading-snug sm:text-base">
+            <i className="size-2.5 translate-y-px rounded-full" style={{ background: TONE_MARK[h.tone] ?? TONE_MARK.neutral }} aria-hidden />
             <span>{h.text}</span>
           </li>
         ))}
       </ul>
-      <div className="legend small muted">
-        <span>
-          <i style={{ background: TONE_MARK.favorable }} /> a favor da gestão
-        </span>
-        <span>
-          <i style={{ background: TONE_MARK.unfavorable }} /> contra a gestão
-        </span>
-        <span>
-          <i style={{ background: TONE_MARK.neutral }} /> neutro
-        </span>
-      </div>
-    </div>
+      <Legend
+        className="mb-0 text-xs"
+        items={[
+          { color: TONE_MARK.favorable, label: "a favor da gestão" },
+          { color: TONE_MARK.unfavorable, label: "contra a gestão" },
+          { color: TONE_MARK.neutral, label: "neutro" },
+        ]}
+      />
+    </Card>
   );
 }

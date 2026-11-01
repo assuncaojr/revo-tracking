@@ -38,15 +38,15 @@ export function ChartCard({
   className?: string;
 }) {
   return (
-    <Card className={cn("chart-card my-4 gap-4 py-5", className)}>
+    <Card className={cn("chart-card my-4 gap-4 py-4 sm:py-5", className)}>
       {(title || description || action) && (
-        <CardHeader className="px-5">
+        <CardHeader className="px-4 sm:px-5">
           {title && <CardTitle className="text-base">{title}</CardTitle>}
           {description && <CardDescription>{description}</CardDescription>}
           {action && <CardAction>{action}</CardAction>}
         </CardHeader>
       )}
-      <CardContent className="px-5">{children}</CardContent>
+      <CardContent className="px-4 sm:px-5">{children}</CardContent>
     </Card>
   );
 }
@@ -84,7 +84,7 @@ export function Notice({ children, className }: { children: ReactNode; className
   return (
     <Alert className={cn("my-4 border-l-4 border-l-muted-foreground/40 bg-secondary/60", className)}>
       <Info />
-      <AlertDescription className="text-foreground/80">{children}</AlertDescription>
+      <AlertDescription className="block text-foreground/80">{children}</AlertDescription>
     </Alert>
   );
 }
