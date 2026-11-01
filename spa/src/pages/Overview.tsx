@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Estimate, Indicator, Overview as OverviewData } from "../api";
+import type { Balance, Estimate, Indicator, Overview as OverviewData } from "../api";
+import { useShowMargins } from "../prefs";
 import { changeColor } from "../tone";
 
 // Cores por entidade, em ordem fixa (paleta validada para daltonismo; ver skill de dataviz): cada estrato mantém
-// a sua cor em todos os gráficos. O total vai em grafite: azul e vermelho são reservados para "a favor" e "contra"
-// a gestão.
-const TOTAL_COLOR = "var(--text)";
+// a sua cor em todos os gráficos. Azul e vermelho são reservados para "a favor" e "contra" a gestão.
 
 /** Cor do sentido do indicador: azul se valor maior é a favor da gestão, vermelho se é contra. */
 export function polarityColor(ind: { favorable: boolean }): string {
@@ -53,6 +52,7 @@ export function IndicatorTiles({
   selected: string;
   onSelect: (key: string) => void;
 }) {
+  const showMargins = useShowMargins();
   return (
     <div className="tiles">
       {data.indicators.map((ind) => (
@@ -85,7 +85,8 @@ export function IndicatorTiles({
                 />
               </div>
               <span className="tile-meta">
-                {margin(ind.current, ind.mean)} · {ind.current.n} entrevistas
+                {showMargins && `${margin(ind.current, ind.mean)} · `}
+                {ind.current.n} entrevistas
               </span>
               {data.previous && <Change ind={ind} />}
             </>
@@ -120,15 +121,15 @@ function Sparkline({ ind }: { ind: Indicator }) {
 // --- resumo em balanços ---
 
 /** Cada pergunta como uma barra: a favor da gestão (azul) | meio (cinza) | contra (vermelho), com a marca da metade. */
-export function Balances({ data }: { data: OverviewData }) {
-  if (!data.balances?.length) return null;
+export function Balances({ balances }: { balances: Balance[] }) {
+  if (!balances?.length) return null;
   return (
     <div className="card balances">
-      {data.balances.map((b) => (
+      {balances.map((b) => (
         <div key={b.question}>
           <div className="balance-head">
             <strong>{b.label}</strong>
-            <span className="muted small">{b.n} entrevistas · a linha marca a metade</span>
+            <span className="muted small">{b.n} entrevistas</span>
           </div>
           {b.favorable && b.unfavorable && b.other ? (
             <>
@@ -167,7 +168,7 @@ export function Balances({ data }: { data: OverviewData }) {
 }
 
 /** Frase de leitura: quem está à frente, e se a diferença passa da margem. */
-function BalanceVerdict({ b }: { b: OverviewData["balances"][number] }) {
+function BalanceVerdict({ b }: { b: Balance }) {
   const f = b.favorable!;
   const u = b.unfavorable!;
   const overlap = f.low <= u.high && u.low <= f.high;
@@ -402,81 +403,6 @@ export function TrendChart({ ind }: { ind: Indicator }) {
   );
 }
 
-// --- estratos lado a lado ---
-
-/** Ponto com a margem de erro (traço) por indicador: total e cada estrato na mesma régua. */
-export function StrataChart({ data }: { data: OverviewData }) {
-  const groups: { name: string; color: string; get: (ind: Indicator) => Estimate }[] = [
-    { name: "Total", color: TOTAL_COLOR, get: (ind) => ind.current },
-    ...data.strata.map((st) => ({
-      name: st,
-      color: stratumColor(data.strata, st),
-      get: (ind: Indicator) => ind.by_stratum[st] ?? { n: 0, value: null },
-    })),
-  ];
-  return (
-    <div className="card chart-card">
-      <h3>Comparação entre estratos</h3>
-      <p className="muted small">
-        Cada ponto é o resultado do grupo; o traço é a margem de erro. Traços que se cruzam: a diferença pode ser só
-        oscilação da amostra.
-      </p>
-      <div className="legend">
-        {groups.map((g) => (
-          <span key={g.name}>
-            <i style={{ background: g.color }} /> {g.name}
-          </span>
-        ))}
-      </div>
-      <div className="dotplot">
-        {data.indicators.map((ind) => {
-          const [lo, hi] = ind.mean ? (ind.scale ?? [0, 10]) : [0, 100];
-          const pos = (v: number) => `${((v - lo) / (hi - lo)) * 100}%`;
-          return (
-            <div key={ind.key} className="dot-row">
-              <div className="dot-label">{ind.label}</div>
-              <div className="dot-track">
-                <span className="dot-axis" style={{ left: 0 }}>
-                  {ind.mean ? lo : `${lo}%`}
-                </span>
-                <span className="dot-axis" style={{ right: 0 }}>
-                  {ind.mean ? hi : `${hi}%`}
-                </span>
-                {groups.map((g, k) => {
-                  const e = g.get(ind);
-                  if (e.value == null || e.low == null || e.high == null) return null;
-                  const top = 6 + k * 9;
-                  const tip = `${g.name}: ${fmt(e.value, ind.mean)} ${margin(e, ind.mean)} (${e.n} entrevistas)`;
-                  return (
-                    <span key={g.name} title={tip}>
-                      <span
-                        className="whisker"
-                        style={{ left: pos(e.low), width: `calc(${pos(e.high)} - ${pos(e.low)})`, top: top + 3, background: g.color }}
-                      />
-                      <span className="dot" style={{ left: pos(e.value), top, background: g.color }} />
-                    </span>
-                  );
-                })}
-              </div>
-              <div className="dot-values">
-                {groups.map((g) => {
-                  const e = g.get(ind);
-                  return (
-                    <span key={g.name} title={g.name}>
-                      <i style={{ background: g.color }} />
-                      {e.value != null ? fmt(e.value, ind.mean) : e.suppressed ? "oculto" : "—"}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // --- grade de áreas ---
 
 // Divergente: melhorou (azul) ↔ piorou (vermelho), "igual" no cinza neutro; não-resposta num cinza mais claro.
@@ -544,6 +470,39 @@ export function GridChart({ data }: { data: OverviewData }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// --- resumo em frases ---
+
+const TONE_MARK: Record<string, string> = { favorable: "var(--fav)", unfavorable: "var(--unfav)", neutral: "#9a9a94" };
+
+/** "O que mudou" em frases curtas, com marcador na cor do sentido (azul a favor, vermelho contra, cinza neutro). */
+export function Headlines({ items, title }: { items: { tone: string; text: string }[]; title: string }) {
+  if (!items.length) return null;
+  return (
+    <div className="card headlines">
+      <h3>{title}</h3>
+      <ul>
+        {items.map((h) => (
+          <li key={h.text}>
+            <i style={{ background: TONE_MARK[h.tone] ?? TONE_MARK.neutral }} aria-hidden />
+            <span>{h.text}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="legend small muted">
+        <span>
+          <i style={{ background: TONE_MARK.favorable }} /> a favor da gestão
+        </span>
+        <span>
+          <i style={{ background: TONE_MARK.unfavorable }} /> contra a gestão
+        </span>
+        <span>
+          <i style={{ background: TONE_MARK.neutral }} /> neutro
+        </span>
+      </div>
     </div>
   );
 }

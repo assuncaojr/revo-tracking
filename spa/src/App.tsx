@@ -4,18 +4,19 @@ import { DISCLAIMER, ROLE_LABELS } from "./format";
 import { Login } from "./pages/Login";
 import { FieldNow } from "./pages/FieldNow";
 import { Flags } from "./pages/Flags";
-import { Results } from "./pages/Results";
-import { Progress } from "./pages/Progress";
+import { Details, Summary } from "./pages/Results";
+import { Neighborhoods } from "./pages/Neighborhoods";
 import { Questionnaire } from "./pages/Questionnaire";
 import { Manage } from "./pages/Manage";
 
-type Tab = "field" | "flags" | "results" | "progress" | "questionnaire" | "manage";
+type Tab = "field" | "flags" | "summary" | "hoods" | "details" | "questionnaire" | "manage";
 
 const TABS: { id: Tab; label: string; staffOnly?: boolean; roles?: Role[] }[] = [
   { id: "field", label: "Campo agora", staffOnly: true },
   { id: "flags", label: "Alertas", staffOnly: true },
-  { id: "results", label: "Resultados" },
-  { id: "progress", label: "Progresso" },
+  { id: "summary", label: "Resumo" },
+  { id: "hoods", label: "Bairros" },
+  { id: "details", label: "Detalhes" },
   { id: "questionnaire", label: "Questionário" },
   { id: "manage", label: "Cadastros", roles: ["admin", "supervisor"] },
 ];
@@ -93,8 +94,9 @@ export function App() {
           <main>
             {current === "field" && <FieldNow campaignId={campaign.id} />}
             {current === "flags" && <Flags campaign={campaign} />}
-            {current === "results" && <Results campaign={campaign} />}
-            {current === "progress" && <Progress campaignId={campaign.id} />}
+            {current === "summary" && <Summary campaign={campaign} />}
+            {current === "hoods" && <Neighborhoods campaign={campaign} />}
+            {current === "details" && <Details campaign={campaign} />}
             {current === "questionnaire" && <Questionnaire campaign={campaign} />}
             {current === "manage" && <Manage campaign={campaign} />}
           </main>

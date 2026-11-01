@@ -285,6 +285,56 @@ export interface Overview {
   indicators: Indicator[];
   grid: { key: string; text: string; options: QOption[]; rows: GridRow[] } | null;
   balances: Balance[];
+  headlines: Headline[];
+  today_n: number;
+  last_at: string | null;
+}
+
+export interface Headline {
+  tone: "favorable" | "unfavorable" | "neutral";
+  text: string;
+}
+
+export interface HoodIndicatorMeta {
+  key: string;
+  label: string;
+  mean: boolean;
+  favorable: boolean;
+}
+
+export interface Neighborhoods {
+  period: "7d" | "all";
+  n: number;
+  min_cell: number;
+  city: Record<string, Estimate>;
+  indicators: HoodIndicatorMeta[];
+  items: {
+    id: string;
+    name: string;
+    stratum: string | null;
+    n: number;
+    indicators: Record<string, Estimate & { differs: boolean }>;
+  }[];
+}
+
+export interface NeighborhoodDetail {
+  id: string;
+  name: string;
+  stratum: string | null;
+  n: number;
+  period: "7d" | "all";
+  min_cell: number;
+  suppressed?: boolean;
+  headlines?: Headline[];
+  indicators?: (HoodIndicatorMeta & { value: Estimate; city: Estimate; differs: boolean })[];
+  balances?: Balance[];
+  grid?: {
+    text: string;
+    positive_label: string;
+    negative_label: string;
+    rows: { value: string; label: string; n: number; positive: number; negative: number; balance: number }[];
+  } | null;
+  rankings?: Insights["rankings"];
 }
 
 export interface Balance {

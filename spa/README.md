@@ -6,10 +6,13 @@ React 19 + TypeScript + Vite, sem biblioteca visual. Uma aplicação, dois públ
 |---|---|---|
 | Campo agora | produção por entrevistador, aparelhos, cotas do dia (atualiza a cada minuto) | — |
 | Alertas | revisar: aceitar ou excluir a entrevista (admin e supervisor) | — |
-| Resultados | **Panorama**: indicadores-chave com margem de erro e variação na semana, evolução (média de 3 dias), estratos lado a lado, grade de áreas. **Cruzamentos**: indicador por voto em 2024, estrato e perfil; segmentos aprovação × continuidade; rankings. **Mapa**: opinião em hexágonos (D26); a equipe vê também a cobertura do campo, um ponto por entrevista. **Pergunta a pergunta**: bruto, total e por estrato | idem, com grupos de menos de 30 entrevistas ocultos; mapa só em hexágonos |
-| Progresso | feitas × meta por estrato | idem |
+| Resumo (D28) | o que a pesquisa mostra em frases, balanços a favor × contra a gestão, indicadores com tendência, evolução, áreas | idem |
+| Bairros (D28) | lista comparando com a cidade, ficha do bairro, mapa em hexágonos (D26) e cobertura do campo | idem, sem a cobertura |
+| Detalhes | cruzamentos (só o que se diferencia, com opção de ver tudo), segmentos, rankings, pergunta a pergunta, progresso do campo | idem, com grupos de menos de 30 entrevistas ocultos |
 | Questionário | prévia de leitura; admin carrega nova versão (JSON) e publica | prévia e **aprovação** (coordenação) |
 | Cadastros (D25) | entrevistadores e aparelhos (admin e supervisor); estratos, bairros, pontos e usuários do painel (admin) | — |
+
+Cor só nos dados: azul = a favor da gestão, vermelho = contra, cinza = dentro da margem. Margens de erro escondidas por padrão ("Mostrar margens de erro"). Pensado também para celular.
 
 Em todo acesso: login com senha + código do app autenticador, aviso de que o sistema não garante eleição no primeiro acesso (D16) e marca d'água com nome, e-mail e horário.
 

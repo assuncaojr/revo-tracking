@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useShowMargins } from "../prefs";
 import type { CrossGroup, Insights as InsightsData, RankingItem } from "../api";
 import { fmt, margin, stratumColor } from "./Overview";
 import { TONE_COLORS, TONE_LABELS, toneOf } from "../tone";
@@ -16,6 +18,8 @@ function domain(groups: CrossGroup[], mean: boolean): [number, number] {
 
 /** Indicador por grupo (voto passado, estrato, sexo…): ponto com a margem, e a linha vertical do total. */
 export function Crosstab({ data }: { data: InsightsData }) {
+  const [all, setAll] = useState(false);
+  const showMargins = useShowMargins();
   const ct = data.crosstab;
   if (!ct) return <p className="muted">Esta campanha ainda não tem indicadores configurados.</p>;
   const mean = ct.indicator.mean;
@@ -27,10 +31,16 @@ export function Crosstab({ data }: { data: InsightsData }) {
   return (
     <div className="card chart-card">
       <h3>{ct.indicator.label}, por grupo</h3>
-      <p className="muted small">
-        Ponto: resultado do grupo; traço: margem de erro; linha cinza: total ({fmt(ct.total.value, mean)}). Só ganha cor
-        o grupo que se diferencia do total de verdade (o traço não cruza a linha).
-      </p>
+      <div className="row between wrap">
+        <p className="muted small">
+          {all
+            ? `Todos os grupos. Linha cinza: total (${fmt(ct.total.value, mean)}). Só ganha cor o grupo que se diferencia do total de verdade.`
+            : `Só os grupos que se diferenciam de verdade do total (${fmt(ct.total.value, mean)}): o resto está dentro da margem.`}
+        </p>
+        <button className="link" onClick={() => setAll(!all)}>
+          {all ? "mostrar só o que se diferencia" : "ver todos os grupos"}
+        </button>
+      </div>
       <div className="legend">
         <span>
           <i style={{ background: FAV }} /> mais favorável à gestão que o total
@@ -42,10 +52,18 @@ export function Crosstab({ data }: { data: InsightsData }) {
           <i style={{ background: UNFAV }} /> menos favorável à gestão que o total
         </span>
       </div>
-      {ct.dimensions.map((d) => (
+      {ct.dimensions.map((d) => {
+        const shown = all
+          ? d.groups
+          : d.groups.filter((g) => {
+              const tone = toneOf(g, ct.total.value, ct.indicator.favorable, mean);
+              return tone != null && tone !== "same";
+            });
+        if (!all && shown.length === 0) return null;
+        return (
         <section key={d.key} className="xdim">
           <h4>{d.label}</h4>
-          {d.groups.map((g) => {
+          {shown.map((g) => {
             const tone = toneOf(g, ct.total.value, ct.indicator.favorable, mean);
             // Ponto pequeno no branco: só direção (azul, vermelho, cinza), sempre no tom forte; o tamanho da
             // diferença já está no valor escrito ao lado
@@ -71,7 +89,8 @@ export function Crosstab({ data }: { data: InsightsData }) {
               <div className="xvalue">
                 {g.value != null ? (
                   <>
-                    <strong>{fmt(g.value, mean)}</strong> <span className="muted">{margin(g, mean)}</span>
+                    <strong>{fmt(g.value, mean)}</strong>{" "}
+                    {showMargins && <span className="muted">{margin(g, mean)}</span>}
                   </>
                 ) : (
                   <span className="muted">{g.suppressed ? "poucas entrevistas" : "—"}</span>
@@ -82,14 +101,19 @@ export function Crosstab({ data }: { data: InsightsData }) {
             );
           })}
         </section>
-      ))}
+        );
+      })}
+      {!all && ct.dimensions.every((d) => d.groups.every((g) => {
+        const tone = toneOf(g, ct.total.value, ct.indicator.favorable, mean);
+        return tone == null || tone === "same";
+      })) && <p className="muted">Nenhum grupo se diferencia do total além da margem de erro.</p>}
       <div className="xrow xaxis muted small">
         <div />
         <div className="xtrack">
           <span style={{ left: 0 }}>{mean ? lo : `${lo}%`}</span>
           <span style={{ right: 0 }}>{mean ? hi : `${hi}%`}</span>
         </div>
-        <div>valor ± margem</div>
+        <div>{showMargins ? "valor ± margem" : "valor"}</div>
         <div>n</div>
       </div>
     </div>

@@ -7,47 +7,18 @@ import type {
   Results as ResultsData,
   Tally,
 } from "../api";
+import { MarginsToggle, useShowMargins } from "../prefs";
 import { usePoll } from "../usePoll";
 import { Crosstab, Rankings, Segments } from "./Insights";
-import { MapView } from "./MapView";
-import { Balances, GridChart, IndicatorTiles, StrataChart, TrendChart } from "./Overview";
+import { Balances, GridChart, Headlines, IndicatorTiles, TrendChart } from "./Overview";
+import { Progress } from "./Progress";
 
-type View = "overview" | "insights" | "map" | "questions";
-
-const VIEWS: { id: View; label: string }[] = [
-  { id: "overview", label: "Panorama" },
-  { id: "insights", label: "Cruzamentos" },
-  { id: "map", label: "Mapa" },
-  { id: "questions", label: "Pergunta a pergunta" },
-];
-
-/** Resultados: panorama (indicadores, evolução, estratos, áreas) e pergunta a pergunta. Sempre bruto, sem ponderação. */
-export function Results({ campaign }: { campaign: CampaignAccess }) {
-  const [view, setView] = useState<View>("overview");
-  return (
-    <>
-      <div className="row between">
-        <h2>Resultados</h2>
-        <div className="segmented" role="tablist">
-          {VIEWS.map((v) => (
-            <button key={v.id} className={view === v.id ? "active" : ""} onClick={() => setView(v.id)}>
-              {v.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {view === "overview" && <OverviewView campaign={campaign} />}
-      {view === "insights" && <InsightsView campaign={campaign} />}
-      {view === "map" && <MapView campaign={campaign} />}
-      {view === "questions" && <Questions campaign={campaign} />}
-    </>
-  );
-}
-
-function OverviewView({ campaign }: { campaign: CampaignAccess }) {
+/** Resumo (D28): o que mudou em frases, os balanços, os indicadores e a evolução. Sempre bruto, sem ponderação. */
+export function Summary({ campaign }: { campaign: CampaignAccess }) {
   const [period, setPeriod] = useState<"7d" | "all">("7d");
   const [selected, setSelected] = useState("approval");
-  const { data, error } = usePoll<OverviewData>(
+  const showMargins = useShowMargins();
+  const { data, error, updatedAt } = usePoll<OverviewData>(
     `/api/campaigns/${campaign.id}/results/overview?period=${period}`,
     5 * 60_000,
   );
@@ -57,10 +28,19 @@ function OverviewView({ campaign }: { campaign: CampaignAccess }) {
     return <p className="muted">Esta campanha ainda não tem indicadores-chave configurados.</p>;
   const ind = data.indicators.find((i) => i.key === selected) ?? data.indicators[0];
   const since = new Date(`${data.start}T12:00:00`).toLocaleDateString("pt-BR");
+  const last = data.last_at ? new Date(data.last_at) : null;
 
   return (
     <>
-      <div className="row filters">
+      <div className="row between wrap page-head">
+        <h2>Resumo</h2>
+        <span className="muted small freshness">
+          {last && `Última entrevista ${last.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} · `}
+          {data.today_n} hoje
+          {updatedAt && ` · painel atualizado às ${updatedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}
+        </span>
+      </div>
+      <div className="row filters wrap">
         <label className="row">
           Período
           <select value={period} onChange={(e) => setPeriod(e.target.value as "7d" | "all")}>
@@ -69,21 +49,54 @@ function OverviewView({ campaign }: { campaign: CampaignAccess }) {
           </select>
         </label>
         <span className="muted small">
-          {data.n} entrevistas completas desde {since}
-          {period === "7d" && data.previous && " · comparado com os 7 dias anteriores"}
+          {data.n} entrevistas desde {since}
+          {period === "7d" && data.previous && ", comparado com a semana anterior"}
         </span>
+        <MarginsToggle />
       </div>
-      <p className="notice">
-        <strong>Resultado bruto, sem ponderação.</strong> Ainda não corrige a amostra pelo perfil do eleitorado nem pelo
-        voto passado, então não é previsão de resultado. A margem de erro (95%) vale para uma amostra aleatória e é o
-        mínimo de incerteza.
-        {data.min_cell != null && ` Grupos com menos de ${data.min_cell} entrevistas ficam ocultos.`}
-      </p>
-      <Balances data={data} />
+      <Headlines items={data.headlines} title="O que a pesquisa mostra" />
+      <Balances balances={data.balances} />
       <IndicatorTiles data={data} selected={ind.key} onSelect={setSelected} />
       <TrendChart ind={ind} />
-      <StrataChart data={data} />
       <GridChart data={data} />
+      <p className="notice small">
+        <strong>Resultado bruto da pesquisa</strong>, ainda sem ajuste pelo perfil do eleitorado: mostra o que os
+        entrevistados responderam e não é previsão de resultado.{" "}
+        {showMargins
+          ? "A margem de erro (95%) vale para uma amostra aleatória e é o mínimo de incerteza."
+          : "“Empate técnico” e “estável” querem dizer que a diferença é pequena demais para afirmar com segurança."}
+        {data.min_cell != null && ` Grupos com menos de ${data.min_cell} entrevistas ficam ocultos.`}
+      </p>
+    </>
+  );
+}
+
+type DetailView = "insights" | "questions" | "progress";
+
+const DETAIL_VIEWS: { id: DetailView; label: string }[] = [
+  { id: "insights", label: "Cruzamentos" },
+  { id: "questions", label: "Pergunta a pergunta" },
+  { id: "progress", label: "Progresso do campo" },
+];
+
+/** Detalhes: para quem quer ir além do resumo. */
+export function Details({ campaign }: { campaign: CampaignAccess }) {
+  const [view, setView] = useState<DetailView>("insights");
+  return (
+    <>
+      <div className="row between wrap page-head">
+        <h2>Detalhes</h2>
+        <div className="segmented" role="tablist">
+          {DETAIL_VIEWS.map((v) => (
+            <button key={v.id} className={view === v.id ? "active" : ""} onClick={() => setView(v.id)}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === "insights" && <InsightsView campaign={campaign} />}
+      {view === "questions" && <Questions campaign={campaign} />}
+      {view === "progress" && <Progress campaignId={campaign.id} />}
     </>
   );
 }
@@ -117,13 +130,9 @@ function InsightsView({ campaign }: { campaign: CampaignAccess }) {
             <option value="7d">Últimos 7 dias</option>
           </select>
         </label>
-        <span className="muted small">{data.n} entrevistas completas</span>
+        <span className="muted small">{data.n} entrevistas</span>
+        <MarginsToggle />
       </div>
-      <p className="notice">
-        <strong>Resultado bruto, sem ponderação.</strong> Grupo pequeno tem margem grande: compare os traços, não só os
-        pontos.
-        {data.min_cell != null && ` Grupos com menos de ${data.min_cell} entrevistas ficam ocultos.`}
-      </p>
       <Crosstab data={data} />
       <Segments data={data} />
       <Rankings data={data} />
