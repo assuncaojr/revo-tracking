@@ -50,10 +50,6 @@ th:not([data-slot]) { color: var(--text-muted); font-weight: 600; font-size: 12p
 
 
 
-.questions { list-style: none; padding: 0; display: grid; gap: 10px; }
-.questions p { margin: 6px 0 0; }
-.aloud { font-style: italic; color: var(--text-muted); }
-.cond { color: var(--warn); font-size: 13px; }
 
 /* Cadastros */
 .subnav { margin-bottom: 16px; flex-wrap: wrap; }
@@ -71,8 +67,6 @@ table.compact input.coord { width: 110px; }
 .cred dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; }
 .cred dt { color: var(--text-muted); font-size: 13px; }
 .cred dd { margin: 0; }
-.upload { margin: 12px 0; }
-.upload summary { cursor: pointer; font-weight: 600; }
 
 /* Panorama dos resultados. Cores das séries: paleta validada para daltonismo (ordem fixa, ver Overview.tsx). */
 
