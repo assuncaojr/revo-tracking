@@ -19,19 +19,21 @@ PILOT_SETTINGS = {
         {"code": "desaprova_e_avalia_bem", "condition": {"all": [
             {"key": "G1", "in": ["desaprova"]}, {"key": "G2", "in": ["otima", "boa"]}]}},
     ],
-    # Indicadores-chave do panorama de resultados (overview.py)
+    # Indicadores-chave do panorama de resultados (overview.py). `favorable`: valor maior é bom para a gestão?
+    # Define a cor (azul = mais favorável à gestão, vermelho = menos), seja o cliente a gestão ou a oposição.
     "indicators": [
-        {"key": "approval", "label": "Aprova a gestão", "question": "G1", "values": ["aprova"]},
-        {"key": "positive", "label": "Avaliação ótima ou boa", "question": "G2", "values": ["otima", "boa"]},
-        {"key": "negative", "label": "Avaliação ruim ou péssima", "question": "G2", "values": ["ruim", "pessima"]},
-        {"key": "score", "label": "Nota média da gestão", "question": "G3", "mean": True},
-        {"key": "continue", "label": "Quer que continue", "question": "E1", "values": ["continuar"]},
-        {"key": "change", "label": "Quer mudança", "question": "E1", "values": ["mudar"]},
+        {"key": "approval", "label": "Aprova a gestão", "question": "G1", "values": ["aprova"], "favorable": True},
+        {"key": "positive", "label": "Avaliação ótima ou boa", "question": "G2", "values": ["otima", "boa"], "favorable": True},
+        {"key": "negative", "label": "Avaliação ruim ou péssima", "question": "G2", "values": ["ruim", "pessima"], "favorable": False},
+        {"key": "score", "label": "Nota média da gestão", "question": "G3", "mean": True, "favorable": True},
+        {"key": "continue", "label": "Quer que continue", "question": "E1", "values": ["continuar"], "favorable": True},
+        {"key": "change", "label": "Quer mudança", "question": "E1", "values": ["mudar"], "favorable": False},
     ],
     # Cruzamentos, segmentos e rankings (insights.py, D27)
     "segments": {"rows": "G1", "cols": "E1", "names": {
         "aprova|continuar": "Base fiel", "aprova|mudar": "Aprova, mas quer mudança",
-        "desaprova|continuar": "Desaprova, mas aceita continuar", "desaprova|mudar": "Oposição"}},
+        "desaprova|continuar": "Desaprova, mas aceita continuar", "desaprova|mudar": "Oposição"},
+        "tones": {"aprova|continuar": "favorable", "desaprova|mudar": "unfavorable"}},
     "rankings": ["G7", "E2"],
     # Mapa agregado (geo.py, D26): lado do hexágono em metros
     "map": {"hex_m": 800},

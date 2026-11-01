@@ -105,7 +105,8 @@ def _crosstab(c: Context, rows: list, ind: dict) -> dict:
         labels = d["labels"] | {OTHER: "Outro"}
         dims.append({"key": d["key"], "label": d["label"], "groups": [
             {"group": g, "label": labels.get(g, g), **groups[g].out(c.hide)} for g in _ordered(groups, labels)]})
-    return {"indicator": {"key": ind["key"], "label": ind["label"], "mean": mean},
+    return {"indicator": {"key": ind["key"], "label": ind["label"], "mean": mean,
+                          "favorable": ind.get("favorable", True)},
             "total": total.out(c.hide), "dimensions": dims}
 
 
@@ -136,7 +137,7 @@ def _segments(c: Context, rows: list, cfg: dict) -> dict | None:
         return {"n": k, "pct": round(100 * k / n, 1)}
 
     return {
-        "n": n, "left_out": left_out, "names": cfg.get("names", {}), "rows": {"key": qr["key"], "text": qr["text"], "values": [{"value": v, "label": lr[v]} for v in rvals]},
+        "n": n, "left_out": left_out, "names": cfg.get("names", {}), "tones": cfg.get("tones", {}), "rows": {"key": qr["key"], "text": qr["text"], "values": [{"value": v, "label": lr[v]} for v in rvals]},
         "cols": {"key": qc["key"], "text": qc["text"], "values": [{"value": v, "label": lc[v]} for v in cvals]},
         "cells": {f"{a}|{b}": cell(counts[(a, b)]) for a in rvals for b in cvals},
         "row_totals": {a: cell(sum(counts[(a, b)] for b in cvals)) for a in rvals},

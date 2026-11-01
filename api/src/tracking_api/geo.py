@@ -106,11 +106,13 @@ def opinion_map(cid: uuid.UUID, user: AuthUser, s: DbSession, period: Period = "
     counts: dict[tuple[int, int], int] = {}
     # No mapa o mínimo vale também para a equipe: hexágono de 1 ou 2 entrevistas só pinta ruído (0% ou 100%)
     hide = settings().min_cell
+    total = Estimate(mean)  # referência das cores: a média do período em toda a área do mapa
     for r in rows:
         key = grid.cell(r.lat, r.lng)
         counts[key] = counts.get(key, 0) + 1
         if (x := _observe(ind, r.answers)) is not None:
             cells.setdefault(key, Estimate(mean)).add(x)
+            total.add(x)
     out = []
     for key, n in counts.items():
         est = cells.get(key, Estimate(mean)).out(hide)
@@ -121,7 +123,9 @@ def opinion_map(cid: uuid.UUID, user: AuthUser, s: DbSession, period: Period = "
     lngs = [p[1] for cell in out for p in cell["polygon"]]
     return {
         "size_m": size_m, "sizes": list(HEX_SIZES), "n": n_window, "n_located": len(rows),
-        "indicator": {"key": ind["key"], "label": ind["label"], "mean": mean, "scale": _scale(c, ind)},
+        "indicator": {"key": ind["key"], "label": ind["label"], "mean": mean, "scale": _scale(c, ind),
+                      "favorable": ind.get("favorable", True)},
+        "total": total.out(c.hide),
         "indicators": [{"key": i["key"], "label": i["label"]} for i in c.indicators],
         "min_cell": hide,
         "bounds": [[min(lats), min(lngs)], [max(lats), max(lngs)]] if out else None,

@@ -212,6 +212,7 @@ def overview(cid: uuid.UUID, user: AuthUser, s: DbSession, period: Period = "7d"
                            "rolling": pooled(ind["key"], mean, days=window).out(hide)})
         out_indicators.append({
             "key": ind["key"], "label": ind["label"], "question": ind["question"], "mean": mean,
+            "favorable": ind.get("favorable", True),
             "scale": qv_min_max(qv, ind["question"]) if mean else None,
             "current": cur, "previous": prev, "change": _changed(cur, prev, mean) if prev else None,
             "by_stratum": {st: pooled(ind["key"], mean, d0=start, stratum=st).out(hide) for st in strata},
