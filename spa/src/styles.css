@@ -48,10 +48,7 @@ th:not([data-slot]), td:not([data-slot]) { text-align: left; padding: 8px 10px; 
 th:not([data-slot]) { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 
-.strata { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 
-.result { margin: 16px 0; }
-.result table { background: none; }
 
 .questions { list-style: none; padding: 0; display: grid; gap: 10px; }
 .questions p { margin: 6px 0 0; }
@@ -78,10 +75,6 @@ table.compact input.coord { width: 110px; }
 .upload summary { cursor: pointer; font-weight: 600; }
 
 /* Panorama dos resultados. Cores das séries: paleta validada para daltonismo (ordem fixa, ver Overview.tsx). */
-.segmented { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.segmented button { border: 0; border-radius: 0; padding: 7px 14px; }
-.segmented button.active { background: var(--ink-soft); font-weight: 600; }
-.filters { margin: 4px 0 12px; flex-wrap: wrap; gap: 16px; }
 
 
 .chart-card { margin: 12px 0; }
@@ -89,30 +82,20 @@ table.compact input.coord { width: 110px; }
 .chart-card > p.small, .chart-card div > p.small { margin: 0 0 10px; }
 
 /* Cruzamentos, segmentos, rankings, mapa (D26, D27) */
-.segmented { flex-wrap: wrap; }
 .segments { background: none; }
 .segments th[scope="row"] { color: var(--text); font-size: 14px; text-transform: none; letter-spacing: 0; }
 
 /* Resumo em balanços e blocos com a cor do sentido */
 
 /* Resumo, bairros, detalhes (D28) */
-.page-head { margin-bottom: 4px; gap: 8px; }
-.page-head h2 { margin-bottom: 0; }
-.page-head p { margin: 4px 0 0; }
-.wrap { flex-wrap: wrap; }
 
 /* Celular: o cliente abre o painel no telefone, entre uma reunião e outra (D28) */
 @media (max-width: 640px) {
   main { padding: 14px 14px 24px; }
   h2 { font-size: 18px; }
-  .segmented { display: flex; width: 100%; overflow-x: auto; }
-  .segmented button { flex: 1 0 auto; white-space: nowrap; padding: 8px 10px; font-size: 13px; }
-  .filters { gap: 10px; }
-  .filters select { max-width: 60vw; }
   .chart-card { padding: 12px; }
   .segments th, .segments td { padding: 6px 4px; font-size: 12px; }
   table { font-size: 13px; }
-  .result table { display: block; overflow-x: auto; }
 }
 
 /* Marcos, método, boletim (D29) */
@@ -120,15 +103,7 @@ table.compact input.coord { width: 110px; }
 .highlights li { display: grid; grid-template-columns: 10px 1fr auto; gap: 8px; align-items: baseline; font-size: 14px; }
 .highlights h4 { margin: 6px 0 8px; font-size: 13px; color: var(--text-muted); }
 .hl-value { font-variant-numeric: tabular-nums; }
-.method-numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 12px 0; }
-.method-numbers .card { display: grid; gap: 2px; }
-.method-numbers strong { font-size: 26px; font-weight: 650; }
-.method-numbers span { font-size: 13px; color: var(--text-muted); }
-.prose { max-width: 760px; line-height: 1.6; font-size: 15px; }
-.prose p { margin: 0 0 12px; }
 @media (max-width: 640px) {
-  .method-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .method-numbers strong { font-size: 22px; }
 }
 @media (max-width: 640px) {
 }
@@ -144,5 +119,3 @@ table.compact input.coord { width: 110px; }
   .card, .chart-card, tr { break-inside: avoid; }
   .chart-card button.link { display: none; }
 }
-.two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin: 12px 0; }
-.two-up.tight { margin: 0; gap: 24px; }

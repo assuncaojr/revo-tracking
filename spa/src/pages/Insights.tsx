@@ -3,6 +3,10 @@ import { useShowMargins } from "../prefs";
 import type { CrossGroup, Insights as InsightsData, RankingItem } from "../api";
 import { fmt, margin, stratumColor } from "./Overview";
 import { TONE_COLORS, TONE_LABELS, toneOf } from "../tone";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Legend } from "@/components/controls";
+import { ChartCard, EmptyState } from "@/components/page";
 
 const BLUE = "var(--series-1)";
 const FAV = "#2a78d6";
@@ -21,7 +25,7 @@ export function Crosstab({ data }: { data: InsightsData }) {
   const [all, setAll] = useState(false);
   const showMargins = useShowMargins();
   const ct = data.crosstab;
-  if (!ct) return <p className="muted">Esta campanha ainda não tem indicadores configurados.</p>;
+  if (!ct) return <EmptyState>Esta campanha ainda não tem indicadores configurados.</EmptyState>;
   const mean = ct.indicator.mean;
   const [lo, hi] = domain(
     ct.dimensions.flatMap((d) => d.groups),
@@ -29,29 +33,26 @@ export function Crosstab({ data }: { data: InsightsData }) {
   );
   const pos = (v: number) => `${((v - lo) / (hi - lo)) * 100}%`;
   return (
-    <div className="card chart-card">
-      <h3>{ct.indicator.label}, por grupo</h3>
-      <div className="row between wrap">
-        <p className="muted small">
-          {all
-            ? `Todos os grupos. Linha cinza: total (${fmt(ct.total.value, mean)}). Só ganha cor o grupo que se diferencia do total de verdade.`
-            : `Só os grupos que se diferenciam de verdade do total (${fmt(ct.total.value, mean)}): o resto está dentro da margem.`}
-        </p>
-        <button className="link" onClick={() => setAll(!all)}>
+    <ChartCard
+      title={`${ct.indicator.label}, por grupo`}
+      description={
+        all
+          ? `Todos os grupos. Linha cinza: total (${fmt(ct.total.value, mean)}). Só ganha cor o grupo que se diferencia do total de verdade.`
+          : `Só os grupos que se diferenciam de verdade do total (${fmt(ct.total.value, mean)}): o resto está dentro da margem.`
+      }
+      action={
+        <Button variant="link" size="sm" className="no-print h-auto px-0 whitespace-normal" onClick={() => setAll(!all)}>
           {all ? "mostrar só o que se diferencia" : "ver todos os grupos"}
-        </button>
-      </div>
-      <div className="legend">
-        <span>
-          <i style={{ background: FAV }} /> mais favorável à gestão que o total
-        </span>
-        <span>
-          <i style={{ background: "#9a9a94" }} /> {TONE_LABELS.same}
-        </span>
-        <span>
-          <i style={{ background: UNFAV }} /> menos favorável à gestão que o total
-        </span>
-      </div>
+        </Button>
+      }
+    >
+      <Legend
+        items={[
+          { color: FAV, label: "mais favorável à gestão que o total" },
+          { color: "#9a9a94", label: TONE_LABELS.same },
+          { color: UNFAV, label: "menos favorável à gestão que o total" },
+        ]}
+      />
       {ct.dimensions.map((d) => {
         const shown = all
           ? d.groups
@@ -90,13 +91,13 @@ export function Crosstab({ data }: { data: InsightsData }) {
                 {g.value != null ? (
                   <>
                     <strong>{fmt(g.value, mean)}</strong>{" "}
-                    {showMargins && <span className="muted">{margin(g, mean)}</span>}
+                    {showMargins && <span className="text-muted-foreground">{margin(g, mean)}</span>}
                   </>
                 ) : (
-                  <span className="muted">{g.suppressed ? "poucas entrevistas" : "—"}</span>
+                  <span className="text-muted-foreground">{g.suppressed ? "poucas entrevistas" : "—"}</span>
                 )}
               </div>
-              <div className="xn muted">{g.n}</div>
+              <div className="xn text-muted-foreground">{g.n}</div>
             </div>
             );
           })}
@@ -106,8 +107,8 @@ export function Crosstab({ data }: { data: InsightsData }) {
       {!all && ct.dimensions.every((d) => d.groups.every((g) => {
         const tone = toneOf(g, ct.total.value, ct.indicator.favorable, mean);
         return tone == null || tone === "same";
-      })) && <p className="muted">Nenhum grupo se diferencia do total além da margem de erro.</p>}
-      <div className="xrow xaxis muted small">
+      })) && <p className="text-sm text-muted-foreground">Nenhum grupo se diferencia do total além da margem de erro.</p>}
+      <div className="xrow xaxis text-xs text-muted-foreground">
         <div />
         <div className="xtrack">
           <span style={{ left: 0 }}>{mean ? lo : `${lo}%`}</span>
@@ -116,7 +117,7 @@ export function Crosstab({ data }: { data: InsightsData }) {
         <div>{showMargins ? "valor ± margem" : "valor"}</div>
         <div>n</div>
       </div>
-    </div>
+    </ChartCard>
   );
 }
 
@@ -126,41 +127,42 @@ export function Segments({ data }: { data: InsightsData }) {
   if (!sg) return null;
   const max = Math.max(1, ...Object.values(sg.cells).map((c) => c.pct ?? 0));
   return (
-    <div className="card chart-card">
-      <h3>Segmentos</h3>
-      <p className="muted small">
-        Cada célula é a parte dos entrevistados (n = {sg.n}) que deu as duas respostas. Linhas: {sg.rows.text}{" "}
-        Colunas: {sg.cols.text}
-        {sg.left_out > 0 && ` Fora da matriz: ${sg.left_out} que não souberam ou não responderam uma das duas.`}
-      </p>
-      <div className="legend">
-        <span>
-          <i style={{ background: TONE_COLORS.fav2 }} /> a favor da gestão
-        </span>
-        <span>
-          <i style={{ background: TONE_COLORS.unfav2 }} /> contra a gestão
-        </span>
-        <span>
-          <i style={{ background: "#9a9a94" }} /> dividido
-        </span>
-        <span className="muted">· cor mais forte = segmento maior</span>
-      </div>
-      <table className="segments">
-        <thead>
-          <tr>
-            <th />
+    <ChartCard
+      title="Segmentos"
+      description={
+        <>
+          Cada célula é a parte dos entrevistados (n = {sg.n}) que deu as duas respostas. Linhas: {sg.rows.text}{" "}
+          Colunas: {sg.cols.text}
+          {sg.left_out > 0 && ` Fora da matriz: ${sg.left_out} que não souberam ou não responderam uma das duas.`}
+        </>
+      }
+    >
+      <Legend
+        items={[
+          { color: TONE_COLORS.fav2, label: "a favor da gestão" },
+          { color: TONE_COLORS.unfav2, label: "contra a gestão" },
+          { color: "#9a9a94", label: "dividido" },
+          { color: "", label: "· cor mais forte = segmento maior" },
+        ]}
+      />
+      <Table className="segments">
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead />
             {sg.cols.values.map((c) => (
-              <th key={c.value} className="num">
+              <TableHead key={c.value} className="text-center whitespace-normal">
                 {c.label}
-              </th>
+              </TableHead>
             ))}
-            <th className="num">Total</th>
-          </tr>
-        </thead>
-        <tbody>
+            <TableHead className="text-right">Total</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {sg.rows.values.map((r) => (
-            <tr key={r.value}>
-              <th scope="row">{r.label}</th>
+            <TableRow key={r.value} className="border-0 hover:bg-transparent">
+              <TableHead scope="row" className="font-medium whitespace-normal text-foreground">
+                {r.label}
+              </TableHead>
               {sg.cols.values.map((c) => {
                 const cell = sg.cells[`${r.value}|${c.value}`];
                 const name = sg.names[`${r.value}|${c.value}`];
@@ -168,31 +170,33 @@ export function Segments({ data }: { data: InsightsData }) {
                 const tone = sg.tones[`${r.value}|${c.value}`];
                 const rgb = tone === "favorable" ? "28, 92, 171" : tone === "unfavorable" ? "201, 58, 57" : "120, 118, 110";
                 return (
-                  <td
+                  <TableCell
                     key={c.value}
-                    className="segcell"
+                    className="segcell px-2 py-3 whitespace-normal"
                     style={{ background: `rgba(${rgb}, ${a})`, color: a > 0.5 ? "#fff" : undefined }}
                   >
                     <strong>{cell?.pct != null ? `${Math.round(cell.pct)}%` : cell?.suppressed ? "<30" : "—"}</strong>
                     {name && <span>{name}</span>}
-                  </td>
+                  </TableCell>
                 );
               })}
-              <td className="num">{pctOf(sg.row_totals[r.value]?.pct)}</td>
-            </tr>
+              <TableCell className="text-right tabular-nums">{pctOf(sg.row_totals[r.value]?.pct)}</TableCell>
+            </TableRow>
           ))}
-          <tr>
-            <th scope="row">Total</th>
+          <TableRow className="hover:bg-transparent">
+            <TableHead scope="row" className="font-medium text-foreground">
+              Total
+            </TableHead>
             {sg.cols.values.map((c) => (
-              <td key={c.value} className="num">
+              <TableCell key={c.value} className="text-center tabular-nums">
                 {pctOf(sg.col_totals[c.value]?.pct)}
-              </td>
+              </TableCell>
             ))}
-            <td className="num">100%</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+            <TableCell className="text-right tabular-nums">100%</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </ChartCard>
   );
 }
 
@@ -206,29 +210,24 @@ export function Rankings({ data }: { data: InsightsData }) {
   return (
     <>
       {data.rankings.map((rk) => (
-        <div key={rk.key} className="card chart-card">
-          <h3>{rk.text}</h3>
-          <p className="muted small">
-            {rk.type === "name"
+        <ChartCard
+          key={rk.key}
+          title={rk.text}
+          description={`${
+            rk.type === "name"
               ? "Resposta espontânea: o entrevistador não lê nomes. Nomes fora da lista entram em “outros nomes”."
-              : "Uma escolha por entrevistado."}{" "}
-            n = {rk.n}.
-          </p>
+              : "Uma escolha por entrevistado."
+          } n = ${rk.n}.`}
+        >
           {rk.strata.length > 1 && (
-            <div className="legend">
-              {rk.strata.map((st) => (
-                <span key={st}>
-                  <i style={{ background: stratumColor(rk.strata, st) }} /> {st}
-                </span>
-              ))}
-            </div>
+            <Legend items={rk.strata.map((st) => ({ color: stratumColor(rk.strata, st), label: st }))} />
           )}
           <div className="ranking">
             {rk.items.map((it) => (
               <RankRow key={it.value} it={it} strata={rk.strata} />
             ))}
           </div>
-        </div>
+        </ChartCard>
       ))}
     </>
   );
@@ -249,7 +248,7 @@ function RankRow({ it, strata }: { it: RankingItem; strata: string[] }) {
         )}
       </div>
       <div className="rvalue">
-        {it.pct != null ? <strong>{Math.round(it.pct)}%</strong> : <span className="muted">poucas</span>}
+        {it.pct != null ? <strong>{Math.round(it.pct)}%</strong> : <span className="text-muted-foreground">poucas</span>}
       </div>
       {strata.length > 1 && (
         <div className="rstrata">
@@ -280,38 +279,35 @@ export function Highlights({ data }: { data: InsightsData }) {
   const worse = items.filter((x) => x.tone!.startsWith("unfav")).sort((a, b) => b.diff - a.diff);
   const list = (xs: typeof items, color: string, empty: string) =>
     xs.length === 0 ? (
-      <p className="muted small">{empty}</p>
+      <p className="text-sm text-muted-foreground">{empty}</p>
     ) : (
-      <ul>
+      <ul className="grid gap-1.5">
         {xs.slice(0, 5).map(({ g, d }) => (
-          <li key={`${d.key}-${g.group}`}>
-            <i style={{ background: color }} />
+          <li key={`${d.key}-${g.group}`} className="grid grid-cols-[10px_1fr_auto] items-baseline gap-2 text-sm">
+            <i className="size-2.5 rounded-full" style={{ background: color }} />
             <span>
-              <span className="muted">{d.label}:</span> <strong>{g.label}</strong>
+              <span className="text-muted-foreground">{d.label}:</span> <strong>{g.label}</strong>
             </span>
-            <strong className="hl-value">{fmt(g.value, mean)}</strong>
+            <strong className="tabular-nums">{fmt(g.value, mean)}</strong>
           </li>
         ))}
       </ul>
     );
   return (
-    <div className="card highlights">
-      <h3>
-        {ct.indicator.label}: onde a gestão vai melhor e onde vai pior
-      </h3>
-      <p className="muted small">
-        Comparado com o total ({fmt(ct.total.value, mean)}). Só entram diferenças além da margem de erro.
-      </p>
-      <div className="two-up tight">
+    <ChartCard
+      title={`${ct.indicator.label}: onde a gestão vai melhor e onde vai pior`}
+      description={`Comparado com o total (${fmt(ct.total.value, mean)}). Só entram diferenças além da margem de erro.`}
+    >
+      <div className="grid gap-6 md:grid-cols-2">
         <div>
-          <h4>Mais favorável à gestão</h4>
+          <h4 className="mb-2 text-sm font-medium text-muted-foreground">Mais favorável à gestão</h4>
           {list(better, FAV, "Nenhum grupo acima do total além da margem.")}
         </div>
         <div>
-          <h4>Menos favorável à gestão</h4>
+          <h4 className="mb-2 text-sm font-medium text-muted-foreground">Menos favorável à gestão</h4>
           {list(worse, UNFAV, "Nenhum grupo abaixo do total além da margem.")}
         </div>
       </div>
-    </div>
+    </ChartCard>
   );
 }

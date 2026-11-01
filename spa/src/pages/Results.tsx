@@ -16,8 +16,11 @@ import { Balances, GridChart, Headlines, IndicatorTiles, TrendChart } from "./Ov
 import { Progress } from "./Progress";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Segmented, type Option } from "@/components/controls";
-import { EmptyState, ErrorState, LoadingState, Notice, PageHeader, Toolbar } from "@/components/page";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Segmented, SelectField, type Option } from "@/components/controls";
+import { ChartCard, EmptyState, ErrorState, LoadingState, Notice, PageHeader, Toolbar } from "@/components/page";
 
 const PERIODS: Option<"7d" | "all">[] = [
   { value: "7d", label: "Últimos 7 dias" },
@@ -99,16 +102,14 @@ export function Details({ campaign }: { campaign: CampaignAccess }) {
   const [view, setView] = useState<DetailView>("insights");
   return (
     <>
-      <div className="row between wrap page-head">
-        <h2>Detalhes</h2>
-        <div className="segmented" role="tablist">
-          {DETAIL_VIEWS.map((v) => (
-            <button key={v.id} className={view === v.id ? "active" : ""} onClick={() => setView(v.id)}>
-              {v.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader title="Detalhes" />
+      <Segmented
+        className="mb-4"
+        value={view}
+        onChange={setView}
+        size="sm"
+        options={DETAIL_VIEWS.map((v) => ({ value: v.id, label: v.label }))}
+      />
       {view === "insights" && <InsightsView campaign={campaign} />}
       {view === "questions" && <Questions campaign={campaign} />}
       {view === "progress" && <Progress campaignId={campaign.id} />}
@@ -124,31 +125,21 @@ function InsightsView({ campaign }: { campaign: CampaignAccess }) {
     `/api/campaigns/${campaign.id}/results/insights?period=${period}&indicator=${indicator}`,
     5 * 60_000,
   );
-  if (error) return <p className="error">{error}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (error) return <ErrorState>{error}</ErrorState>;
+  if (!data) return <LoadingState />;
   return (
     <>
-      <div className="row filters">
-        <label className="row">
-          Indicador
-          <select value={indicator} onChange={(e) => setIndicator(e.target.value)}>
-            {data.indicators.map((i) => (
-              <option key={i.key} value={i.key}>
-                {i.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="row">
-          Período
-          <select value={period} onChange={(e) => setPeriod(e.target.value as "7d" | "all")}>
-            <option value="all">Todo o período</option>
-            <option value="7d">Últimos 7 dias</option>
-          </select>
-        </label>
-        <span className="muted small">{data.n} entrevistas</span>
+      <Toolbar>
+        <SelectField
+          label="Indicador"
+          value={indicator}
+          onChange={setIndicator}
+          options={data.indicators.map((i) => ({ value: i.key, label: i.label }))}
+        />
+        <SelectField label="Período" value={period} onChange={setPeriod} options={[...PERIODS].reverse()} />
+        <span className="text-sm text-muted-foreground">{data.n} entrevistas</span>
         <MarginsToggle />
-      </div>
+      </Toolbar>
       <Highlights data={data} />
       <Crosstab data={data} />
       <Segments data={data} />
@@ -164,28 +155,30 @@ function Questions({ campaign }: { campaign: CampaignAccess }) {
     `/api/campaigns/${campaign.id}/results${day ? `?day=${day}` : ""}`,
     5 * 60_000,
   );
-  if (error) return <p className="error">{error}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (error) return <ErrorState>{error}</ErrorState>;
+  if (!data) return <LoadingState />;
 
   return (
     <>
-      <div className="row filters">
-        <label className="row">
-          Dia
-          <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+      <Toolbar>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="questions-day" className="text-muted-foreground">
+            Dia
+          </Label>
+          <Input id="questions-day" type="date" className="w-auto bg-card" value={day} onChange={(e) => setDay(e.target.value)} />
           {day && (
-            <button className="link" onClick={() => setDay("")}>
-              acumulado
-            </button>
+            <Button variant="link" size="sm" onClick={() => setDay("")}>
+              ver acumulado
+            </Button>
           )}
-        </label>
-      </div>
-      <p className="notice">
+        </div>
+      </Toolbar>
+      <Notice>
         <strong>Resultado bruto, sem ponderação.</strong> Mostra o que as {data.n} entrevistas completas responderam
         {day ? " neste dia" : " até agora"}; ainda não corrige a amostra pelo perfil do eleitorado nem pelo voto
         passado, então não é previsão de resultado.
         {!campaign.staff && " Grupos com menos de 30 entrevistas ficam ocultos."}
-      </p>
+      </Notice>
       {data.questions.map((q) => (
         <QuestionResult key={`${q.key}-${q.item ?? ""}`} q={q} />
       ))}
@@ -202,43 +195,46 @@ function QuestionResult({ q }: { q: ResultQuestion }) {
   const extra = Object.keys(q.total.counts ?? {}).filter((v) => !(v in q.labels)); // ex.: notas 0–10
   const all = [...values, ...extra.sort((a, b) => Number(a) - Number(b))];
   return (
-    <section className="card result">
-      <h3>
-        <span className="key">{q.key}</span> {q.text}
-      </h3>
+    <ChartCard
+      title={
+        <>
+          <span className="key">{q.key}</span> {q.text}
+        </>
+      }
+    >
       {q.total.suppressed ? (
-        <p className="muted">Ainda poucas entrevistas ({q.total.n}): resultado oculto até 30.</p>
+        <p className="text-sm text-muted-foreground">Ainda poucas entrevistas ({q.total.n}): resultado oculto até 30.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th />
-              <th className="bar-col">Total (n={q.total.n})</th>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead />
+              <TableHead className="bar-col">Total (n={q.total.n})</TableHead>
               {strata.map(([st, t]) => (
-                <th key={st} className="num">
+                <TableHead key={st} className="text-right">
                   {st} (n={t.n})
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {all.map((v) => (
-              <tr key={v}>
-                <td>{q.labels[v] ?? v}</td>
-                <td>
+              <TableRow key={v} className="hover:bg-transparent">
+                <TableCell className="whitespace-normal">{q.labels[v] ?? v}</TableCell>
+                <TableCell className="min-w-40">
                   <Bar tally={q.total} value={v} />
-                </td>
+                </TableCell>
                 {strata.map(([st, t]) => (
-                  <td key={st} className="num">
+                  <TableCell key={st} className="text-right tabular-nums">
                     {t.suppressed ? "—" : `${t.pct?.[v] ?? 0}%`}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
-    </section>
+    </ChartCard>
   );
 }
 
@@ -248,7 +244,7 @@ function Bar({ tally, value }: { tally: Tally; value: string }) {
     <div className="hbar">
       <div style={{ width: `${p}%` }} />
       <span>
-        {p}% <span className="muted">({tally.counts?.[value] ?? 0})</span>
+        {p}% <span className="text-muted-foreground">({tally.counts?.[value] ?? 0})</span>
       </span>
     </div>
   );

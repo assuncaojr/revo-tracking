@@ -1,6 +1,7 @@
 import type { CampaignAccess, Method as MethodData } from "../api";
 import { duration } from "../format";
 import { usePoll } from "../usePoll";
+import { ChartCard, ErrorState, LoadingState, Stat } from "@/components/page";
 
 const nf = new Intl.NumberFormat("pt-BR");
 
@@ -11,36 +12,20 @@ function day(iso: string | null): string {
 /** "Como a pesquisa é feita" (D29): o método em palavras, com os números do próprio campo. Nenhum dado de pessoa. */
 export function Method({ campaign }: { campaign: CampaignAccess }) {
   const { data, error } = usePoll<MethodData>(`/api/campaigns/${campaign.id}/results/method`, 5 * 60_000);
-  if (error) return <p className="error">{error}</p>;
-  if (!data) return <p>Carregando…</p>;
+  if (error) return <ErrorState>{error}</ErrorState>;
+  if (!data) return <LoadingState />;
   const refusalPct = data.approached ? Math.round((100 * data.refused) / data.approached) : 0;
   return (
-    <div className="method">
-      <div className="method-numbers">
-        <div className="card">
-          <strong>{nf.format(data.complete)}</strong>
-          <span>entrevistas completas</span>
-        </div>
-        <div className="card">
-          <strong>{data.field_days}</strong>
-          <span>
-            dias de campo ({day(data.first_day)} a {day(data.last_day)})
-          </span>
-        </div>
-        <div className="card">
-          <strong>
-            {data.neighborhoods} de {data.neighborhoods_total}
-          </strong>
-          <span>bairros com entrevistas</span>
-        </div>
-        <div className="card">
-          <strong>{data.interviewers}</strong>
-          <span>entrevistadores</span>
-        </div>
+    <div>
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Stat value={nf.format(data.complete)} label="entrevistas completas" />
+        <Stat value={data.field_days} label={`dias de campo (${day(data.first_day)} a ${day(data.last_day)})`} />
+        <Stat value={`${data.neighborhoods} de ${data.neighborhoods_total}`} label="bairros com entrevistas" />
+        <Stat value={data.interviewers} label="entrevistadores" />
       </div>
 
-      <div className="card prose">
-        <h3>Como a pesquisa é feita</h3>
+      <ChartCard title="Como a pesquisa é feita">
+        <div className="grid max-w-3xl gap-3 text-[15px] leading-relaxed">
         <p>
           <strong>Quem é ouvido.</strong> Eleitores da cidade: as primeiras perguntas confirmam que a pessoa mora e vota
           ali e tem a idade mínima. Os entrevistadores vão a pontos definidos em cada bairro, em dias e horários alternados, e
@@ -71,10 +56,11 @@ export function Method({ campaign }: { campaign: CampaignAccess }) {
           de erro; quando a diferença entre dois números é menor que ela, o painel diz “empate técnico” ou “como a
           cidade”. Grupos com menos de {data.min_cell} entrevistas não aparecem, porque dariam números enganosos.
         </p>
-        <p className="muted small">
+        <p className="text-sm text-muted-foreground">
           Pesquisa de uso interno da campanha: não é registrada no TSE e não pode ser divulgada.
         </p>
-      </div>
+        </div>
+      </ChartCard>
     </div>
   );
 }

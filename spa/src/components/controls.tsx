@@ -99,7 +99,7 @@ export function Legend({
     <div className={cn("legend text-muted-foreground", className)}>
       {items.map((it, k) => (
         <span key={k}>
-          <i style={{ background: it.color, outline: it.outline ? `1px solid ${it.outline}` : undefined }} /> {it.label}
+          {it.color && <i style={{ background: it.color, outline: it.outline ? `1px solid ${it.outline}` : undefined }} />} {it.label}
         </span>
       ))}
     </div>
