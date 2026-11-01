@@ -21,8 +21,18 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ```
 
 ## Estado
-- `:core:model` e `:engine`: prontos e testados (semana 2).
-- `:app` (Android): a fazer (semanas 3–4).
+- `:core:model` e `:engine`: prontos e testados (29 testes), incluindo registro de ações (retomada após queda) e PIN offline.
+- `:app` (Android): cadastro do aparelho, login com PIN offline, escolha de ponto e abordagem, entrevista com todos os tipos de pergunta, rascunho gravado a cada resposta, fila em SQLite, envio em segundo plano (WorkManager), GPS sem bloquear, token no Keystore. 5 testes JVM (fila e cliente da API).
+- **Ensaio no emulador (01/11/2026):** cadastro → login (PIN errado recusado) → entrevista completa → app morto no meio e retomado na mesma pergunta → fim sem rede (fila = 1) → rede religada → entrevista no banco em ~8 s, sem toque, com flag `too_fast` correta.
+- A fazer: disco na tela (estimulada; o piloto não usa), quiosque/MDM, ícone e acabamento visual, build de release assinado.
+
+## Rodar no emulador
+```bash
+docker compose -f ../infra/compose.dev.yaml up -d
+cd ../api && uv run uvicorn tracking_api.main:app --host 0.0.0.0 --port 8000   # outra aba
+cd ../app && ./gradlew :app:installDebug                                          # emulador ligado
+```
+O build de debug fala com `http://10.0.2.2:8000/` (a máquina, vista do emulador). Para um aparelho real na mesma rede: `-Ptrk.apiUrl.debug=http://<ip-da-máquina>:8000/`. Gere o código de cadastro com `uv run tracking-admin device-add` (ver `api/README.md`).
 
 ## Usando o motor
 ```kotlin
