@@ -29,6 +29,15 @@ PILOT_SETTINGS = {
         {"key": "continue", "label": "Quer que continue", "question": "E1", "values": ["continuar"], "favorable": True},
         {"key": "change", "label": "Quer mudança", "question": "E1", "values": ["mudar"], "favorable": False},
     ],
+    # Resumo do panorama: cada pergunta como balanço a favor × contra a gestão (overview.py)
+    "balances": [
+        {"label": "Aprovação", "question": "G1", "favorable": ["aprova"], "unfavorable": ["desaprova"],
+         "favorable_label": "Aprova", "unfavorable_label": "Desaprova", "other_label": "Não sabe / não respondeu"},
+        {"label": "Avaliação", "question": "G2", "favorable": ["otima", "boa"], "unfavorable": ["ruim", "pessima"],
+         "favorable_label": "Ótima ou boa", "unfavorable_label": "Ruim ou péssima", "other_label": "Regular / não sabe"},
+        {"label": "Próxima gestão", "question": "E1", "favorable": ["continuar"], "unfavorable": ["mudar"],
+         "favorable_label": "Continuar", "unfavorable_label": "Mudar", "other_label": "Depende / não sabe"},
+    ],
     # Cruzamentos, segmentos e rankings (insights.py, D27)
     "segments": {"rows": "G1", "cols": "E1", "names": {
         "aprova|continuar": "Base fiel", "aprova|mudar": "Aprova, mas quer mudança",

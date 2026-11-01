@@ -46,6 +46,9 @@ def test_indicadores_conferem_com_as_respostas(users, pilot, client, auth, make_
     today = ind["approval"]["series"][-1]
     assert today["partial"] and today["daily"]["n"] == 5
     assert r["grid"]["rows"][0]["n"] == 5
+    bal = {b["question"]: b for b in r["balances"]}
+    assert bal["G1"]["favorable"]["value"] == 60.0 and bal["G1"]["unfavorable"]["value"] == 40.0
+    assert bal["G1"]["labels"]["favorable"] == "Aprova"
 
 
 def test_cliente_nao_ve_grupos_pequenos_nem_dias_magros(users, pilot, client, auth, make_interview):

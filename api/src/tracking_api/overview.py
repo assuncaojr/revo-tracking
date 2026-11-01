@@ -241,12 +241,43 @@ def overview(cid: uuid.UUID, user: AuthUser, s: DbSession, period: Period = "7d"
                 + [{"value": k, "label": v} for k, v in nonresp.items()],
                 "rows": sorted(grid_rows, key=lambda r: r.get("balance", -999), reverse=True)}
 
+    window_rows = [r for r in rows if c.in_window(r)]
+    balances = [_balance(c, window_rows, b) for b in (c.campaign.settings or {}).get("balances", [])]
+
     return {
         "period": period, "start": start.isoformat(), "today": today.isoformat(),
         "previous": {"start": prev_start.isoformat(), "end": (prev_end - timedelta(days=1)).isoformat()} if prev_start else None,
         "n": n_window, "n_total": len(rows), "weighted": False, "min_cell": settings().min_cell if client else None,
-        "strata": strata, "indicators": out_indicators, "grid": grid,
+        "strata": strata, "indicators": out_indicators, "grid": grid, "balances": balances,
     }
+
+
+def _balance(c: Context, rows: list, cfg: dict) -> dict:
+    """Uma pergunta lida como balanço: quanto é a favor da gestão, quanto é contra e o resto (no meio)."""
+    fav = unfav = other = 0
+    for r in rows:
+        a = r.answers.get(cfg["question"])
+        if a is None:
+            continue
+        v = a.get("value")
+        if v in cfg["favorable"]:
+            fav += 1
+        elif v in cfg["unfavorable"]:
+            unfav += 1
+        else:
+            other += 1  # posição intermediária, não sabe, não respondeu
+    n = fav + unfav + other
+    base = {"label": cfg["label"], "question": cfg["question"], "n": n,
+            "labels": {"favorable": cfg["favorable_label"], "unfavorable": cfg["unfavorable_label"],
+                       "other": cfg.get("other_label", "Nem um nem outro / não sabe")}}
+    if n == 0 or n < c.hide:
+        return {**base, "suppressed": n > 0}
+
+    def share(k: int) -> dict:
+        p, lo, hi = wilson(k, n)
+        return {"value": round(100 * p, 1), "low": round(100 * lo, 1), "high": round(100 * hi, 1)}
+
+    return {**base, "favorable": share(fav), "unfavorable": share(unfav), "other": share(other)}
 
 
 def qv_min_max(qv: models.QuestionnaireVersion | None, key: str) -> list[float] | None:
