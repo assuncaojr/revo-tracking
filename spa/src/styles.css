@@ -156,12 +156,6 @@ table.compact input.coord { width: 110px; }
   .method-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .method-numbers strong { font-size: 22px; }
 }
-.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.report-head { margin: 12px 0 8px; }
-.report-head h1 { font-size: 24px; margin: 6px 0 4px; }
-.report-head p { margin: 2px 0; }
-.report-stamp { display: inline-block; border: 2px solid var(--unfav); color: var(--unfav); font-weight: 800; letter-spacing: 0.08em; font-size: 12px; padding: 3px 8px; border-radius: 4px; }
-.report-foot { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 8px; color: var(--text-muted); }
 @media (max-width: 640px) {
 }
 

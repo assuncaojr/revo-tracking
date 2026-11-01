@@ -3,6 +3,10 @@ import { api, type CampaignAccess, type Insights, type Me, type Neighborhoods, t
 import { DISCLAIMER } from "../format";
 import { Highlights } from "./Insights";
 import { Balances, fmt, GridChart, Headlines, IndicatorTiles, TrendChart } from "./Overview";
+import { ArrowLeft, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { ChartCard, ErrorState, LoadingState } from "@/components/page";
 
 /** Boletim para a reunião (D29): uma página pensada para imprimir ou salvar em PDF pelo navegador.
  *  Leva o nome de quem gerou, a data, "uso interno" e a marca d'água; cada geração vai para a auditoria. */
@@ -27,8 +31,8 @@ export function Report({ campaign, period, onBack }: { campaign: CampaignAccess;
     window.print();
   };
 
-  if (error) return <p className="error">{error}</p>;
-  if (!data) return <p>Montando o boletim…</p>;
+  if (error) return <ErrorState>{error}</ErrorState>;
+  if (!data) return <LoadingState />;
   const { me, ov, ins, hoods } = data;
   const main = ov.indicators[0];
   const now = new Date();
@@ -37,27 +41,31 @@ export function Report({ campaign, period, onBack }: { campaign: CampaignAccess;
 
   return (
     <div className="report">
-      <div className="toolbar no-print">
-        <button className="link" onClick={onBack}>
-          ← voltar ao painel
-        </button>
-        <button className="primary" onClick={print}>
+      <div className="no-print mb-2 flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" className="-ml-2" onClick={onBack}>
+          <ArrowLeft />
+          Voltar ao painel
+        </Button>
+        <Button onClick={print}>
+          <Printer />
           Imprimir ou salvar em PDF
-        </button>
+        </Button>
       </div>
-      <p className="muted small no-print">
+      <p className="no-print text-sm text-muted-foreground">
         Na janela de impressão, escolha “Salvar como PDF” para ter o arquivo. O boletim leva o seu nome e fica
         registrado.
       </p>
 
-      <header className="report-head">
-        <div className="report-stamp">USO INTERNO · NÃO DIVULGAR</div>
-        <h1>Boletim da pesquisa · {campaign.name}</h1>
+      <header className="mt-5 mb-3 grid gap-1">
+        <div className="w-fit rounded border-2 border-[var(--unfav)] px-2 py-0.5 text-xs font-extrabold tracking-widest text-[var(--unfav)]">
+          USO INTERNO · NÃO DIVULGAR
+        </div>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">Boletim da pesquisa · {campaign.name}</h1>
         <p>
           {period === "7d" ? `Últimos 7 dias (desde ${since})` : `Todo o período (desde ${since})`} · {ov.n} entrevistas
           · resultado bruto, sem ponderação
         </p>
-        <p className="muted small">
+        <p className="text-sm text-muted-foreground">
           Gerado por {me.name} ({me.email}) em {now.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
         </p>
       </header>
@@ -70,14 +78,12 @@ export function Report({ campaign, period, onBack }: { campaign: CampaignAccess;
       <GridChart data={ov} />
 
       {hoodMeta && (
-        <div className="card chart-card report-hoods">
-          <h3>{hoodMeta.label} por bairro (todo o período)</h3>
-          <p className="muted small">
-            Cidade: {fmt(hoods.city[hoodMeta.key]?.value, hoodMeta.mean)}. “Como a cidade” quando a diferença cabe na
-            margem de erro.
-          </p>
-          <table className="compact">
-            <tbody>
+        <ChartCard
+          title={`${hoodMeta.label} por bairro (todo o período)`}
+          description={`Cidade: ${fmt(hoods.city[hoodMeta.key]?.value, hoodMeta.mean)}. “Como a cidade” quando a diferença cabe na margem de erro.`}
+        >
+          <Table>
+            <TableBody>
               {[...hoods.items]
                 .sort((a, b) => (b.indicators[hoodMeta.key]?.value ?? -1) - (a.indicators[hoodMeta.key]?.value ?? -1))
                 .map((h) => {
@@ -92,20 +98,22 @@ export function Report({ campaign, period, onBack }: { campaign: CampaignAccess;
                           ? "mais favorável à gestão"
                           : "menos favorável à gestão";
                   return (
-                    <tr key={h.id}>
-                      <td>{h.name}</td>
-                      <td className="num">{e?.value != null ? fmt(e.value, hoodMeta.mean) : "—"}</td>
-                      <td className="muted">{reading}</td>
-                      <td className="num muted">{h.n} entrevistas</td>
-                    </tr>
+                    <TableRow key={h.id} className="hover:bg-transparent">
+                      <TableCell className="font-medium">{h.name}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {e?.value != null ? fmt(e.value, hoodMeta.mean) : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{reading}</TableCell>
+                      <TableCell className="text-right text-muted-foreground tabular-nums">{h.n} entrevistas</TableCell>
+                    </TableRow>
                   );
                 })}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </ChartCard>
       )}
 
-      <footer className="report-foot small">
+      <footer className="mt-5 grid gap-1 border-t pt-3 text-sm text-muted-foreground">
         <p>{DISCLAIMER}</p>
         <p>
           Pesquisa interna da campanha, não registrada no TSE: divulgar é proibido. Este documento identifica quem o
