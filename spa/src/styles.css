@@ -153,3 +153,37 @@ svg .crosshair { stroke: var(--muted); stroke-width: 1; }
 .stack > div.pos, .stack > div.neg { color: #fff; }
 .stack > div:first-child { border-radius: 4px 0 0 4px; }
 .stack > div:last-child { border-radius: 0 4px 4px 0; }
+
+/* Cruzamentos, segmentos, rankings, mapa (D26, D27) */
+.segmented { flex-wrap: wrap; }
+.small-seg { margin-bottom: 12px; }
+.xdim { margin: 14px 0 6px; }
+.xdim h4 { margin: 0 0 4px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.xrow { display: grid; grid-template-columns: 220px 1fr 130px 44px; gap: 12px; align-items: center; min-height: 28px; border-bottom: 1px solid var(--grid-line); font-size: 13px; }
+.xlabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xtrack { position: relative; height: 28px; }
+.xtotal { position: absolute; top: 2px; bottom: 2px; width: 1px; background: #9a9a94; }
+.xvalue { font-variant-numeric: tabular-nums; }
+.xn { text-align: right; font-variant-numeric: tabular-nums; }
+.xaxis { border-bottom: 0; }
+.xaxis .xtrack span { position: absolute; top: 4px; }
+.segments { background: none; }
+.segments th[scope="row"] { color: var(--text); font-size: 14px; text-transform: none; letter-spacing: 0; }
+.segcell { text-align: center; border: 2px solid var(--card); border-radius: 6px; padding: 12px 8px; }
+.segcell strong { display: block; font-size: 20px; }
+.segcell span { display: block; font-size: 12px; color: var(--text); }
+.ranking { display: grid; gap: 2px; }
+.rrow { display: grid; grid-template-columns: 220px 1fr 56px auto; gap: 12px; align-items: center; min-height: 28px; font-size: 13px; }
+.rrow.nr { color: var(--muted); }
+.rtrack { position: relative; height: 14px; }
+.rbar { height: 14px; background: var(--series-1); border-radius: 0 4px 4px 0; }
+.rrow.nr .rbar { background: var(--div-mid); }
+.rwhisker { position: absolute; top: 6px; height: 2px; background: var(--text); opacity: 0.45; }
+.rvalue { font-variant-numeric: tabular-nums; }
+.rstrata { display: flex; gap: 10px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.rstrata i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+.map { height: 520px; border-radius: 8px; border: 1px solid var(--line); z-index: 0; }
+.map-legend { margin-top: 10px; }
+.ring-swatch { background: transparent !important; border: 2px solid; border-radius: 50% !important; box-sizing: border-box; }
+.leaflet-tooltip { font-family: inherit; font-size: 13px; }
+.leaflet-tooltip .muted { color: var(--muted); }

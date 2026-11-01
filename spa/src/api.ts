@@ -284,3 +284,92 @@ export interface Overview {
   indicators: Indicator[];
   grid: { key: string; text: string; options: QOption[]; rows: GridRow[] } | null;
 }
+
+// --- cruzamentos, segmentos, rankings e mapas (D26, D27) ---
+
+export interface CrossGroup extends Estimate {
+  group: string;
+  label: string;
+}
+
+export interface SegmentCell {
+  n: number;
+  pct: number | null;
+  suppressed?: boolean;
+}
+
+export interface RankingItem {
+  value: string;
+  label: string;
+  n: number;
+  nonresponse: boolean;
+  pct: number | null;
+  low?: number;
+  high?: number;
+  suppressed?: boolean;
+  by_stratum: Record<string, number | null>;
+}
+
+export interface Insights {
+  period: "7d" | "all";
+  start: string;
+  n: number;
+  weighted: boolean;
+  min_cell: number | null;
+  indicators: { key: string; label: string }[];
+  crosstab: {
+    indicator: { key: string; label: string; mean: boolean };
+    total: Estimate;
+    dimensions: { key: string; label: string; groups: CrossGroup[] }[];
+  } | null;
+  segments: {
+    n: number;
+    names: Record<string, string>;
+    left_out: number;
+    rows: { key: string; text: string; values: QOption[] };
+    cols: { key: string; text: string; values: QOption[] };
+    cells: Record<string, SegmentCell>;
+    row_totals: Record<string, SegmentCell>;
+    col_totals: Record<string, SegmentCell>;
+  } | null;
+  rankings: { key: string; text: string; type: string; n: number; items: RankingItem[]; strata: string[] }[];
+}
+
+export interface MapCell extends Estimate {
+  id: string;
+  polygon: [number, number][];
+  interviews: number;
+}
+
+export interface OpinionMap {
+  size_m: number;
+  sizes: number[];
+  n: number;
+  n_located: number;
+  indicator: { key: string; label: string; mean: boolean; scale: [number, number] };
+  indicators: { key: string; label: string }[];
+  min_cell: number;
+  bounds: [[number, number], [number, number]] | null;
+  cells: MapCell[];
+}
+
+export interface CoverageMap {
+  day: string;
+  total: number;
+  without_location: number;
+  interviews: {
+    id: string;
+    lat: number;
+    lng: number;
+    accuracy_m: number | null;
+    status: string;
+    started_at: string;
+    duration_s: number;
+    excluded: boolean;
+    interviewer: string;
+    point: string;
+    flags: string[];
+    far: boolean;
+  }[];
+  points: { id: string; name: string; lat: number; lng: number; kind: string }[];
+}

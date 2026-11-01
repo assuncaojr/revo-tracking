@@ -1,9 +1,25 @@
 import { useState } from "react";
-import type { CampaignAccess, Overview as OverviewData, ResultQuestion, Results as ResultsData, Tally } from "../api";
+import type {
+  CampaignAccess,
+  Insights as InsightsData,
+  Overview as OverviewData,
+  ResultQuestion,
+  Results as ResultsData,
+  Tally,
+} from "../api";
 import { usePoll } from "../usePoll";
+import { Crosstab, Rankings, Segments } from "./Insights";
+import { MapView } from "./MapView";
 import { GridChart, IndicatorTiles, StrataChart, TrendChart } from "./Overview";
 
-type View = "overview" | "questions";
+type View = "overview" | "insights" | "map" | "questions";
+
+const VIEWS: { id: View; label: string }[] = [
+  { id: "overview", label: "Panorama" },
+  { id: "insights", label: "Cruzamentos" },
+  { id: "map", label: "Mapa" },
+  { id: "questions", label: "Pergunta a pergunta" },
+];
 
 /** Resultados: panorama (indicadores, evolução, estratos, áreas) e pergunta a pergunta. Sempre bruto, sem ponderação. */
 export function Results({ campaign }: { campaign: CampaignAccess }) {
@@ -13,15 +29,17 @@ export function Results({ campaign }: { campaign: CampaignAccess }) {
       <div className="row between">
         <h2>Resultados</h2>
         <div className="segmented" role="tablist">
-          <button className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}>
-            Panorama
-          </button>
-          <button className={view === "questions" ? "active" : ""} onClick={() => setView("questions")}>
-            Pergunta a pergunta
-          </button>
+          {VIEWS.map((v) => (
+            <button key={v.id} className={view === v.id ? "active" : ""} onClick={() => setView(v.id)}>
+              {v.label}
+            </button>
+          ))}
         </div>
       </div>
-      {view === "overview" ? <OverviewView campaign={campaign} /> : <Questions campaign={campaign} />}
+      {view === "overview" && <OverviewView campaign={campaign} />}
+      {view === "insights" && <InsightsView campaign={campaign} />}
+      {view === "map" && <MapView campaign={campaign} />}
+      {view === "questions" && <Questions campaign={campaign} />}
     </>
   );
 }
@@ -65,6 +83,49 @@ function OverviewView({ campaign }: { campaign: CampaignAccess }) {
       <TrendChart ind={ind} />
       <StrataChart data={data} />
       <GridChart data={data} />
+    </>
+  );
+}
+
+function InsightsView({ campaign }: { campaign: CampaignAccess }) {
+  const [period, setPeriod] = useState<"7d" | "all">("all");
+  const [indicator, setIndicator] = useState("approval");
+  const { data, error } = usePoll<InsightsData>(
+    `/api/campaigns/${campaign.id}/results/insights?period=${period}&indicator=${indicator}`,
+    5 * 60_000,
+  );
+  if (error) return <p className="error">{error}</p>;
+  if (!data) return <p>Carregando…</p>;
+  return (
+    <>
+      <div className="row filters">
+        <label className="row">
+          Indicador
+          <select value={indicator} onChange={(e) => setIndicator(e.target.value)}>
+            {data.indicators.map((i) => (
+              <option key={i.key} value={i.key}>
+                {i.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="row">
+          Período
+          <select value={period} onChange={(e) => setPeriod(e.target.value as "7d" | "all")}>
+            <option value="all">Todo o período</option>
+            <option value="7d">Últimos 7 dias</option>
+          </select>
+        </label>
+        <span className="muted small">{data.n} entrevistas completas</span>
+      </div>
+      <p className="notice">
+        <strong>Resultado bruto, sem ponderação.</strong> Grupo pequeno tem margem grande: compare os traços, não só os
+        pontos.
+        {data.min_cell != null && ` Grupos com menos de ${data.min_cell} entrevistas ficam ocultos.`}
+      </p>
+      <Crosstab data={data} />
+      <Segments data={data} />
+      <Rankings data={data} />
     </>
   );
 }

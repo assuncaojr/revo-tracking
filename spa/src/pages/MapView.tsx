@@ -1,0 +1,270 @@
+import { useEffect, useRef, useState } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import type { CampaignAccess, CoverageMap, OpinionMap } from "../api";
+import { duration, FLAG_LABELS, STATUS_LABELS, timeOf } from "../format";
+import { usePoll } from "../usePoll";
+import { fmt, margin } from "./Overview";
+
+// Rampa sequencial de um só tom (azul, claro → escuro): magnitude, sem sugerir "bom" ou "ruim".
+const RAMP = ["#b7d3f6", "#86b6ef", "#3987e5", "#256abf", "#104281"];
+const SUPPRESSED = "#cfcec9";
+const COMPLETE = "#2a78d6";
+const NOT_COMPLETE = "#9a9a94";
+const FLAGGED = "#d03b3b"; // cor de status (crítico), sempre com rótulo na legenda
+
+const TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+function escape(s: string): string {
+  return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+}
+
+/** Mapa Leaflet controlado por fora: `draw` redesenha a camada de dados sem recriar o mapa. */
+function useLeaflet(draw: (map: L.Map, layer: L.LayerGroup) => void, deps: unknown[]) {
+  const el = useRef<HTMLDivElement>(null);
+  const map = useRef<L.Map | null>(null);
+  const layer = useRef<L.LayerGroup | null>(null);
+  useEffect(() => {
+    if (!el.current || map.current) return;
+    map.current = L.map(el.current, { scrollWheelZoom: false, center: [-4.859, -43.356], zoom: 13 });
+    L.tileLayer(TILES, { attribution: ATTRIBUTION, maxZoom: 18 }).addTo(map.current);
+    layer.current = L.layerGroup().addTo(map.current);
+    return () => {
+      map.current?.remove();
+      map.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    if (!map.current || !layer.current) return;
+    layer.current.clearLayers();
+    draw(map.current, layer.current);
+  }, deps);
+  return el;
+}
+
+export function MapView({ campaign }: { campaign: CampaignAccess }) {
+  const [mode, setMode] = useState<"opinion" | "coverage">("opinion");
+  return (
+    <>
+      {campaign.staff && (
+        <div className="segmented small-seg">
+          <button className={mode === "opinion" ? "active" : ""} onClick={() => setMode("opinion")}>
+            Opinião por região
+          </button>
+          <button className={mode === "coverage" ? "active" : ""} onClick={() => setMode("coverage")}>
+            Cobertura do campo (equipe)
+          </button>
+        </div>
+      )}
+      {mode === "opinion" ? (
+        <Opinion campaign={campaign} />
+      ) : (
+        <Coverage campaignId={campaign.id} />
+      )}
+    </>
+  );
+}
+
+// --- opinião em hexágonos ---
+
+function classes(cells: OpinionMap["cells"], mean: boolean): number[] {
+  const vals = cells.map((c) => c.value).filter((v): v is number => v != null);
+  if (!vals.length) return [];
+  const step = mean ? 0.5 : 5;
+  let lo = Math.floor(Math.min(...vals) / step) * step;
+  let hi = Math.ceil(Math.max(...vals) / step) * step;
+  if (hi - lo < step * RAMP.length) {
+    const mid = (lo + hi) / 2;
+    lo = Math.floor((mid - (step * RAMP.length) / 2) / step) * step;
+    hi = lo + step * RAMP.length;
+  }
+  const w = (hi - lo) / RAMP.length;
+  return Array.from({ length: RAMP.length + 1 }, (_, i) => +(lo + i * w).toFixed(2));
+}
+
+function Opinion({ campaign }: { campaign: CampaignAccess }) {
+  const [period, setPeriod] = useState<"7d" | "all">("all");
+  const [indicator, setIndicator] = useState("approval");
+  const [size, setSize] = useState<number | null>(null);
+  const { data, error } = usePoll<OpinionMap>(
+    `/api/campaigns/${campaign.id}/results/map?period=${period}&indicator=${indicator}${size ? `&size=${size}` : ""}`,
+    5 * 60_000,
+  );
+  const mean = data?.indicator.mean ?? false;
+  const breaks = data ? classes(data.cells, mean) : [];
+  const colorOf = (v: number) => {
+    const i = breaks.findIndex((b, k) => k > 0 && v <= b);
+    return RAMP[Math.max(0, i === -1 ? RAMP.length - 1 : i - 1)];
+  };
+  const [fitted, setFitted] = useState(false);
+
+  const el = useLeaflet(
+    (map, layer) => {
+      if (!data) return;
+      for (const c of data.cells) {
+        const hasValue = c.value != null;
+        const poly = L.polygon(c.polygon, {
+          color: "#ffffff",
+          weight: 1.5,
+          fillColor: hasValue ? colorOf(c.value!) : SUPPRESSED,
+          fillOpacity: hasValue ? 0.72 : 0.35,
+        });
+        const body = hasValue
+          ? `<strong>${fmt(c.value, mean)}</strong> ${margin(c, mean)}<br><span class="muted">${c.n} entrevistas</span>`
+          : `<span class="muted">${c.interviews} entrevistas: poucas para mostrar o resultado</span>`;
+        poly.bindTooltip(`${escape(data.indicator.label)}<br>${body}`, { sticky: true });
+        poly.addTo(layer);
+      }
+      if (data.bounds && !fitted) {
+        map.fitBounds(data.bounds, { padding: [20, 20] });
+        setFitted(true);
+      }
+    },
+    [data],
+  );
+
+  return (
+    <>
+      <div className="row filters">
+        <label className="row">
+          Indicador
+          <select value={indicator} onChange={(e) => setIndicator(e.target.value)}>
+            {(data?.indicators ?? []).map((i) => (
+              <option key={i.key} value={i.key}>
+                {i.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="row">
+          Período
+          <select value={period} onChange={(e) => setPeriod(e.target.value as "7d" | "all")}>
+            <option value="all">Todo o período</option>
+            <option value="7d">Últimos 7 dias</option>
+          </select>
+        </label>
+        <label className="row">
+          Tamanho da região
+          <select value={size ?? data?.size_m ?? ""} onChange={(e) => setSize(Number(e.target.value))}>
+            {(data?.sizes ?? [300, 500, 800, 1200]).map((s) => (
+              <option key={s} value={s}>
+                {s < 1000 ? `${s} m` : `${(s / 1000).toLocaleString("pt-BR")} km`}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {error && <p className="error">{error}</p>}
+      <div className="card chart-card">
+        <h3>{data?.indicator.label ?? "…"} por região</h3>
+        <p className="muted small">
+          Cada hexágono junta as entrevistas feitas naquela área
+          {data && ` (${data.n_located} de ${data.n} com localização boa)`}. Passe o mouse para ver o valor, a margem e o
+          número de entrevistas.
+          {data && ` Hexágonos com menos de ${data.min_cell} entrevistas ficam em cinza, sem valor.`}{" "}
+          Áreas maiores juntam mais entrevistas e escondem menos.
+        </p>
+        <div className="map" ref={el} />
+        {breaks.length > 0 && (
+          <div className="legend map-legend">
+            {RAMP.map((c, i) => (
+              <span key={c}>
+                <i style={{ background: c }} /> {fmt(breaks[i], mean)}–{fmt(breaks[i + 1], mean)}
+              </span>
+            ))}
+            <span>
+              <i style={{ background: SUPPRESSED }} /> poucas entrevistas
+            </span>
+          </div>
+        )}
+        <p className="muted small">
+          Mostra onde entrevistamos, não a cidade inteira: área sem hexágono é área sem entrevista. Resultado bruto, sem
+          ponderação.
+        </p>
+      </div>
+    </>
+  );
+}
+
+// --- cobertura do campo (só equipe) ---
+
+function Coverage({ campaignId }: { campaignId: string }) {
+  const [day, setDay] = useState("");
+  const { data, error } = usePoll<CoverageMap>(`/api/campaigns/${campaignId}/field/map${day ? `?day=${day}` : ""}`);
+  const el = useLeaflet(
+    (map, layer) => {
+      if (!data) return;
+      const bounds: [number, number][] = [];
+      for (const p of data.points) {
+        L.circleMarker([p.lat, p.lng], { radius: 7, color: "#1d2330", weight: 2, fillOpacity: 0 })
+          .bindTooltip(`Ponto de trabalho: ${escape(p.name)}`)
+          .addTo(layer);
+        bounds.push([p.lat, p.lng]);
+      }
+      for (const i of data.interviews) {
+        const flagged = i.flags.length > 0;
+        const fill = i.status === "complete" ? COMPLETE : NOT_COMPLETE;
+        const tip =
+          `<strong>${escape(i.interviewer)}</strong> · ${timeOf(i.started_at)} · ${duration(i.duration_s)}<br>` +
+          `${STATUS_LABELS[i.status] ?? i.status} · ${escape(i.point)}` +
+          (i.accuracy_m != null ? ` · GPS ±${Math.round(i.accuracy_m)} m` : "") +
+          (flagged ? `<br><strong>Alerta:</strong> ${i.flags.map((f) => FLAG_LABELS[f] ?? f).join(", ")}` : "") +
+          (i.excluded ? "<br>Excluída dos resultados" : "");
+        L.circleMarker([i.lat, i.lng], {
+          radius: 5,
+          color: flagged ? FLAGGED : "#ffffff",
+          weight: flagged ? 2.5 : 1.5,
+          fillColor: fill,
+          fillOpacity: 0.9,
+        })
+          .bindTooltip(tip)
+          .addTo(layer);
+        if (!i.far) bounds.push([i.lat, i.lng]);
+      }
+      if (bounds.length) map.fitBounds(bounds, { padding: [24, 24], maxZoom: 16 });
+    },
+    [data],
+  );
+  return (
+    <>
+      <div className="row filters">
+        <label className="row">
+          Dia
+          <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+        </label>
+        {data && (
+          <span className="muted small">
+            {data.total} entrevistas no dia
+            {data.without_location > 0 && ` · ${data.without_location} sem localização (não aparecem)`}
+            {data.interviews.some((i) => i.far) &&
+              ` · ${data.interviews.filter((i) => i.far).length} longe demais da cidade (GPS errado ou aparelho de teste; afaste o zoom para ver)`}
+          </span>
+        )}
+      </div>
+      {error && <p className="error">{error}</p>}
+      <div className="card chart-card">
+        <h3>Onde a equipe entrevistou</h3>
+        <p className="muted small">
+          Uso interno: cada ponto é uma entrevista. Não mostrar ao cliente (D26). Passe o mouse para ver quem, quando e
+          os alertas.
+        </p>
+        <div className="map" ref={el} />
+        <div className="legend map-legend">
+          <span>
+            <i style={{ background: COMPLETE }} /> Completa
+          </span>
+          <span>
+            <i style={{ background: NOT_COMPLETE }} /> Recusa, filtrada ou interrompida
+          </span>
+          <span>
+            <i className="ring-swatch" style={{ borderColor: FLAGGED }} /> Com alerta aberto
+          </span>
+          <span>
+            <i className="ring-swatch" style={{ borderColor: "#1d2330" }} /> Ponto de trabalho
+          </span>
+        </div>
+      </div>
+    </>
+  );
+}
