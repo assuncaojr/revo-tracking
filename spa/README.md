@@ -6,7 +6,7 @@ React 19 + TypeScript + Vite, sem biblioteca visual. Uma aplicação, dois públ
 |---|---|---|
 | Campo agora | produção por entrevistador, aparelhos, cotas do dia (atualiza a cada minuto) | — |
 | Alertas | revisar: aceitar ou excluir a entrevista (admin e supervisor) | — |
-| Resultados | bruto, total e por estrato | idem, com grupos de menos de 30 entrevistas ocultos |
+| Resultados | **Panorama**: indicadores-chave com margem de erro e variação na semana, evolução (média de 3 dias), estratos lado a lado, grade de áreas. **Pergunta a pergunta**: bruto, total e por estrato | idem, com grupos de menos de 30 entrevistas ocultos |
 | Progresso | feitas × meta por estrato | idem |
 | Questionário | prévia de leitura; admin carrega nova versão (JSON) e publica | prévia e **aprovação** (coordenação) |
 | Cadastros (D25) | entrevistadores e aparelhos (admin e supervisor); estratos, bairros, pontos e usuários do painel (admin) | — |

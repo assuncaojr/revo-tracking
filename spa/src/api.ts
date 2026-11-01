@@ -238,3 +238,49 @@ export interface Credentials {
   totp_secret: string;
   totp_uri: string;
 }
+
+// --- panorama dos resultados ---
+
+export interface Estimate {
+  n: number;
+  value: number | null;
+  low?: number;
+  high?: number;
+  suppressed?: boolean;
+}
+
+export interface Indicator {
+  key: string;
+  label: string;
+  question: string;
+  mean: boolean;
+  scale: [number, number] | null;
+  current: Estimate;
+  previous: Estimate | null;
+  change: { diff: number; beyond_margin: boolean } | null;
+  by_stratum: Record<string, Estimate>;
+  series: { day: string; partial: boolean; daily: Estimate; rolling: Estimate }[];
+}
+
+export interface GridRow {
+  value: string;
+  label: string;
+  n: number;
+  suppressed?: boolean;
+  pct?: Record<string, number>;
+  balance?: number;
+}
+
+export interface Overview {
+  period: "7d" | "all";
+  start: string;
+  today: string;
+  previous: { start: string; end: string } | null;
+  n: number;
+  n_total: number;
+  weighted: boolean;
+  min_cell: number | null;
+  strata: string[];
+  indicators: Indicator[];
+  grid: { key: string; text: string; options: QOption[]; rows: GridRow[] } | null;
+}
