@@ -34,7 +34,7 @@ O piloto prova a **operação** e mede o **viés do método**. Ele não precisa 
 | **S3** | 17–21/11 | *Adiantado em 01/11: app Android funcionando de ponta a ponta no emulador (cadastro, login offline, entrevista, retomada após queda, fila offline, envio automático ao voltar a rede).* |
 | ~~S3 original~~ | 17–21/11 | App: renderizador e tipos de pergunta do questionário do piloto. Questionário v1 escrito no formato e validado |
 | **S4** | 24–28/11 | App: condicionais, encerramento, embaralhar, disco, autocompletar, consentimento, recusa. Núcleo: flags de qualidade. **Compra dos 6 aparelhos até aqui** |
-| **S5** | 01–05/12 | Painel "campo agora". SPA mínimo do cliente. Deploy com HTTPS |
+| **S5** | 01–05/12 | Painel "campo agora". SPA mínimo do cliente. Deploy com HTTPS. *Adiantado em 01/11: painel pronto (login com 2 fatores, campo agora, alertas, resultados brutos, progresso, aprovação de questionário, aviso de não garantia, marca d'água; 30 testes na API). Falta o deploy.* |
 | **S6** | 08–12/12 | Aparelhos: reset, MDM, quiosque, instalação. **Ensaio técnico:** modo avião, 200+ entrevistas simuladas, envio ao voltar a rede, teste de bateria de 6 h |
 | **S7** | 15–19/12 | Correções do ensaio. Scripts de análise (ponderação, viés × urna 2024). Material de treinamento |
 | Recesso | 22/12–02/01 | Congelamento. Folga para imprevistos |
