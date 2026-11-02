@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Route, Routes, useNavigate, useParams } from "react-router";
 import type { CampaignAccess, NeighborhoodDetail, Neighborhoods as HoodsData } from "../api";
 import { useShowMargins } from "../prefs";
 import { usePoll } from "../usePoll";
@@ -16,17 +17,31 @@ const FAV = "var(--fav)";
 const UNFAV = "var(--unfav)";
 const SAME = "var(--mid)";
 
-/** Bairros (D28): o político pensa em bairro. Lista comparando com a cidade, ficha de cada um e o mapa. */
+/** Bairros (D28): o político pensa em bairro. Lista comparando com a cidade (/bairros), mapa (/bairros/mapa) e
+    ficha de cada um (/bairros/<id>). */
 export function Neighborhoods({ campaign }: { campaign: CampaignAccess }) {
-  const [view, setView] = useState<"list" | "map">("list");
-  const [selected, setSelected] = useState<string | null>(null);
-  if (selected) return <HoodSheet campaignId={campaign.id} id={selected} onBack={() => setSelected(null)} />;
+  return (
+    <Routes>
+      <Route index element={<HoodsIndex campaign={campaign} view="list" />} />
+      <Route path="mapa" element={<HoodsIndex campaign={campaign} view="map" />} />
+      <Route path=":hoodId" element={<HoodRoute campaignId={campaign.id} />} />
+    </Routes>
+  );
+}
+
+function HoodRoute({ campaignId }: { campaignId: string }) {
+  const navigate = useNavigate();
+  return <HoodSheet campaignId={campaignId} id={useParams().hoodId!} onBack={() => navigate("/bairros")} />;
+}
+
+function HoodsIndex({ campaign, view }: { campaign: CampaignAccess; view: "list" | "map" }) {
+  const navigate = useNavigate();
   return (
     <>
       <PageHeader title="Bairros">
         <Segmented
           value={view}
-          onChange={setView}
+          onChange={(v) => navigate(v === "map" ? "/bairros/mapa" : "/bairros")}
           size="sm"
           options={[
             { value: "list", label: "Lista" },
@@ -34,7 +49,11 @@ export function Neighborhoods({ campaign }: { campaign: CampaignAccess }) {
           ]}
         />
       </PageHeader>
-      {view === "list" ? <HoodList campaignId={campaign.id} onOpen={setSelected} /> : <MapView campaign={campaign} />}
+      {view === "list" ? (
+        <HoodList campaignId={campaign.id} onOpen={(id) => navigate(`/bairros/${id}`)} />
+      ) : (
+        <MapView campaign={campaign} />
+      )}
     </>
   );
 }

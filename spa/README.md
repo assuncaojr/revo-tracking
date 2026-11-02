@@ -25,6 +25,19 @@ Tailwind v4 + shadcn/ui, fonte Geist, sem modo escuro. Ícones: `lucide-react`.
 - Componente que falta: `pnpm dlx shadcn@latest add <nome>` e **confira o diff**: o CLI costuma instalar um pacote npm `cn` (de terceiros) no lugar de usar `src/lib/utils.ts`, e o `sonner` traz `next-themes`. Remova os dois e troque o import para `@/lib/utils`.
 - Não podem quebrar: boletim impresso (`@media print` em `index.css`, classe `no-print`), marca d'água, celular (390 px).
 
+## Rotas
+Navegação com `react-router` (URLs em português, porque aparecem para o usuário). Cada papel só tem as rotas que enxerga; caminho desconhecido ou sem permissão cai na primeira tela permitida.
+
+| URL | Tela |
+|---|---|
+| `/campo`, `/alertas`, `/questionario` | as próprias telas |
+| `/resumo` (`?periodo=tudo`), `/resumo/boletim` | Resumo e boletim para reunião |
+| `/bairros`, `/bairros/mapa`, `/bairros/<id>` | lista, mapa e ficha do bairro |
+| `/detalhes/cruzamentos` · `perguntas` · `progresso` · `metodo` | vistas do Detalhes |
+| `/cadastros/entrevistadores` · `aparelhos` · `marcos` · `locais` · `usuarios` | seções de Cadastros |
+
+Em produção, o núcleo precisa devolver o `index.html` para qualquer caminho fora de `/api` (T3); o `pnpm dev` já faz isso.
+
 ## Rodar local
 ```bash
 pnpm install

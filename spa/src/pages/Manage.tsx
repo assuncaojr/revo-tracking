@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Navigate, useNavigate, useParams } from "react-router";
 import QRCode from "qrcode";
 import {
   api,
@@ -28,29 +29,34 @@ import { cn } from "@/lib/utils";
 
 type Section = "interviewers" | "devices" | "events" | "places" | "members";
 
-const SECTIONS: { id: Section; label: string; adminOnly?: boolean }[] = [
-  { id: "interviewers", label: "Entrevistadores" },
-  { id: "devices", label: "Aparelhos" },
-  { id: "events", label: "Marcos da campanha" },
-  { id: "places", label: "Estratos, bairros e pontos", adminOnly: true },
-  { id: "members", label: "Usuários do painel", adminOnly: true },
+// `path` é o trecho da URL depois de /cadastros
+const SECTIONS: { id: Section; path: string; label: string; adminOnly?: boolean }[] = [
+  { id: "interviewers", path: "entrevistadores", label: "Entrevistadores" },
+  { id: "devices", path: "aparelhos", label: "Aparelhos" },
+  { id: "events", path: "marcos", label: "Marcos da campanha" },
+  { id: "places", path: "locais", label: "Estratos, bairros e pontos", adminOnly: true },
+  { id: "members", path: "usuarios", label: "Usuários do painel", adminOnly: true },
 ];
 
 /** Cadastros (D25). Admin faz tudo; supervisão cuida só de entrevistadores e aparelhos. Nada se apaga: desativa. */
 export function Manage({ campaign }: { campaign: CampaignAccess }) {
   const isAdmin = campaign.role === "admin";
   const sections = SECTIONS.filter((s) => !s.adminOnly || isAdmin);
-  const [section, setSection] = useState<Section>("interviewers");
+  const navigate = useNavigate();
+  // seção desconhecida ou só de admin para quem não é admin: cai na primeira permitida
+  const current = sections.find((s) => s.path === useParams().section);
+  if (!current) return <Navigate to={`/cadastros/${sections[0].path}`} replace />;
+  const section = current.id;
   const base = `/api/campaigns/${campaign.id}/manage`;
   return (
     <>
       <PageHeader title="Cadastros" />
       <Segmented
         className="mb-4"
-        value={section}
-        onChange={setSection}
+        value={current.path}
+        onChange={(path) => navigate(`/cadastros/${path}`)}
         size="sm"
-        options={sections.map((s) => ({ value: s.id, label: s.label }))}
+        options={sections.map((s) => ({ value: s.path, label: s.label }))}
       />
       {section === "interviewers" && <Interviewers base={base} />}
       {section === "devices" && <Devices base={base} />}

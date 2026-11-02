@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router";
 import { api, ApiError, type CampaignAccess, type Me, type Role } from "./api";
 import { DISCLAIMER, ROLE_LABELS } from "./format";
 import { Login } from "./pages/Login";
 import { FieldNow } from "./pages/FieldNow";
 import { Flags } from "./pages/Flags";
-import { Details, Summary } from "./pages/Results";
+import { Details, Summary, SummaryReport } from "./pages/Results";
 import { Neighborhoods } from "./pages/Neighborhoods";
 import { Questionnaire } from "./pages/Questionnaire";
 import { Manage } from "./pages/Manage";
@@ -37,14 +38,23 @@ const GROUPS: { id: Group; label: string }[] = [
   { id: "admin", label: "Gestão" },
 ];
 
-const TABS: { id: Tab; label: string; group: Group; icon: LucideIcon; staffOnly?: boolean; roles?: Role[] }[] = [
-  { id: "field", label: "Campo agora", group: "ops", icon: Activity, staffOnly: true },
-  { id: "flags", label: "Alertas", group: "ops", icon: TriangleAlert, staffOnly: true },
-  { id: "summary", label: "Resumo", group: "results", icon: LayoutDashboard },
-  { id: "hoods", label: "Bairros", group: "results", icon: MapPin },
-  { id: "details", label: "Detalhes", group: "results", icon: ChartColumn },
-  { id: "questionnaire", label: "Questionário", group: "admin", icon: ClipboardList },
-  { id: "manage", label: "Cadastros", group: "admin", icon: Users, roles: ["admin", "supervisor"] },
+// `path` é o primeiro trecho da URL (em português: aparece para o usuário)
+const TABS: {
+  id: Tab;
+  path: string;
+  label: string;
+  group: Group;
+  icon: LucideIcon;
+  staffOnly?: boolean;
+  roles?: Role[];
+}[] = [
+  { id: "field", path: "campo", label: "Campo agora", group: "ops", icon: Activity, staffOnly: true },
+  { id: "flags", path: "alertas", label: "Alertas", group: "ops", icon: TriangleAlert, staffOnly: true },
+  { id: "summary", path: "resumo", label: "Resumo", group: "results", icon: LayoutDashboard },
+  { id: "hoods", path: "bairros", label: "Bairros", group: "results", icon: MapPin },
+  { id: "details", path: "detalhes", label: "Detalhes", group: "results", icon: ChartColumn },
+  { id: "questionnaire", path: "questionario", label: "Questionário", group: "admin", icon: ClipboardList },
+  { id: "manage", path: "cadastros", label: "Cadastros", group: "admin", icon: Users, roles: ["admin", "supervisor"] },
 ];
 
 // No celular, a barra de baixo leva as três seções mais usadas que o papel enxerga; o resto fica em "Mais"
@@ -55,8 +65,8 @@ type TabDef = (typeof TABS)[number];
 export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [campaignId, setCampaignId] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { pathname } = useLocation();
 
   const loadMe = useCallback(async () => {
     try {
@@ -77,8 +87,18 @@ export function App() {
   const tabs = campaign?.disclaimer_accepted
     ? TABS.filter((t) => (!t.staffOnly || campaign.staff) && (!t.roles || t.roles.includes(campaign.role)))
     : [];
-  const current = tab && tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
-  const currentTab = tabs.find((t) => t.id === current);
+  const currentTab = tabs.find((t) => pathname === `/${t.path}` || pathname.startsWith(`/${t.path}/`));
+  const current = currentTab?.id;
+  const allowed = (id: Tab) => tabs.some((t) => t.id === id);
+
+  // Troca de tela: volta ao topo, fecha a gaveta do celular e dá nome à aba do navegador
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+    setMenuOpen(false);
+  }, [pathname]);
+  useEffect(() => {
+    document.title = currentTab ? `${currentTab.label} — Tracking` : "Tracking — Painel";
+  }, [currentTab]);
 
   if (me === undefined) return <Centered>Carregando…</Centered>;
   if (me === null) return <Login onDone={loadMe} />;
@@ -88,19 +108,12 @@ export function App() {
     await api.post("/api/auth/logout");
     setMe(null);
   };
-  const go = (id: Tab) => {
-    setTab(id);
-    setMenuOpen(false);
-    window.scrollTo({ top: 0 });
-  };
-
   const sidebar = (
     <SidebarBody
       me={me}
       campaign={campaign}
       tabs={tabs}
       current={current}
-      onGo={go}
       onCampaign={setCampaignId}
       onLogout={logout}
     />
@@ -140,19 +153,29 @@ export function App() {
           {!campaign.disclaimer_accepted ? (
             <DisclaimerGate campaign={campaign} onAccepted={loadMe} />
           ) : (
-            <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 pt-5 pb-8 sm:px-6 lg:px-10 lg:pt-7 print:max-w-none print:p-0">
+            <main
+              key={campaign.id}
+              className="mx-auto w-full max-w-[1200px] flex-1 px-4 pt-5 pb-8 sm:px-6 lg:px-10 lg:pt-7 print:max-w-none print:p-0"
+            >
               {currentTab && (
                 <div className="no-print mb-1 text-sm text-muted-foreground">
                   {GROUPS.find((g) => g.id === currentTab.group)?.label}
                 </div>
               )}
-              {current === "field" && <FieldNow campaignId={campaign.id} />}
-              {current === "flags" && <Flags campaign={campaign} />}
-              {current === "summary" && <Summary campaign={campaign} />}
-              {current === "hoods" && <Neighborhoods campaign={campaign} />}
-              {current === "details" && <Details campaign={campaign} />}
-              {current === "questionnaire" && <Questionnaire campaign={campaign} />}
-              {current === "manage" && <Manage campaign={campaign} />}
+              {/* Só existem as rotas que o papel enxerga; o resto (inclusive "/") cai na primeira tela permitida */}
+              <Routes>
+                {allowed("field") && <Route path="/campo" element={<FieldNow campaignId={campaign.id} />} />}
+                {allowed("flags") && <Route path="/alertas" element={<Flags campaign={campaign} />} />}
+                {allowed("summary") && <Route path="/resumo" element={<Summary campaign={campaign} />} />}
+                {allowed("summary") && <Route path="/resumo/boletim" element={<SummaryReport campaign={campaign} />} />}
+                {allowed("hoods") && <Route path="/bairros/*" element={<Neighborhoods campaign={campaign} />} />}
+                {allowed("details") && <Route path="/detalhes/:view?" element={<Details campaign={campaign} />} />}
+                {allowed("questionnaire") && (
+                  <Route path="/questionario" element={<Questionnaire campaign={campaign} />} />
+                )}
+                {allowed("manage") && <Route path="/cadastros/:section?" element={<Manage campaign={campaign} />} />}
+                <Route path="*" element={<Navigate to={tabs[0] ? `/${tabs[0].path}` : "/"} replace />} />
+              </Routes>
             </main>
           )}
           <footer className="no-print border-t bg-card/95 px-4 py-2 text-xs text-muted-foreground backdrop-blur sm:px-6 lg:sticky lg:bottom-0 lg:px-10">
@@ -167,7 +190,7 @@ export function App() {
           className="no-print fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t bg-card px-1 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden"
         >
           {mobileTabs.map((t) => (
-            <BottomItem key={t.id} icon={t.icon} label={t.label} active={t.id === current} onClick={() => go(t.id)} />
+            <BottomItem key={t.id} icon={t.icon} label={t.label} active={t.id === current} to={`/${t.path}`} />
           ))}
           <BottomItem
             icon={Menu}
@@ -206,7 +229,6 @@ function SidebarBody({
   campaign,
   tabs,
   current,
-  onGo,
   onCampaign,
   onLogout,
 }: {
@@ -214,7 +236,6 @@ function SidebarBody({
   campaign: CampaignAccess;
   tabs: TabDef[];
   current: Tab | undefined;
-  onGo: (t: Tab) => void;
   onCampaign: (id: string) => void;
   onLogout: () => void;
 }) {
@@ -258,10 +279,9 @@ function SidebarBody({
                 const Icon = t.icon;
                 const active = t.id === current;
                 return (
-                  <button
+                  <Link
                     key={t.id}
-                    type="button"
-                    onClick={() => onGo(t.id)}
+                    to={`/${t.path}`}
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sidebar-muted",
@@ -272,7 +292,7 @@ function SidebarBody({
                   >
                     <Icon className="size-4 shrink-0" />
                     {t.label}
-                  </button>
+                  </Link>
                 );
               })}
             </div>
@@ -298,29 +318,37 @@ function SidebarBody({
   );
 }
 
+/** Item da barra de baixo do celular: link para uma tela, ou botão (o "Mais", que abre a gaveta). */
 function BottomItem({
   icon: Icon,
   label,
   active,
+  to,
   onClick,
 }: {
   icon: LucideIcon;
   label: string;
   active: boolean;
-  onClick: () => void;
+  to?: string;
+  onClick?: () => void;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px]",
-        active ? "font-semibold text-primary" : "text-muted-foreground",
-      )}
-    >
+  const className = cn(
+    "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px]",
+    active ? "font-semibold text-primary" : "text-muted-foreground",
+  );
+  const body = (
+    <>
       <Icon className="size-5" />
       {label}
+    </>
+  );
+  return to ? (
+    <Link to={to} aria-current={active ? "page" : undefined} className={className}>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={className}>
+      {body}
     </button>
   );
 }

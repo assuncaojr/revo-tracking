@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
 import type {
   CampaignAccess,
   Insights as InsightsData,
@@ -27,17 +28,36 @@ const PERIODS: Option<"7d" | "all">[] = [
   { value: "all", label: "Todo o período" },
 ];
 
+/** Período lido da URL (`?periodo=tudo`), para o link e o voltar do boletim manterem a escolha. */
+function usePeriod(): ["7d" | "all", (p: "7d" | "all") => void] {
+  const [params, setParams] = useSearchParams();
+  const period = params.get("periodo") === "tudo" ? "all" : "7d";
+  return [period, (p) => setParams(p === "all" ? { periodo: "tudo" } : {}, { replace: true })];
+}
+
+/** Boletim como rota própria (/resumo/boletim): dá para recarregar, voltar e mandar o link. */
+export function SummaryReport({ campaign }: { campaign: CampaignAccess }) {
+  const [period] = usePeriod();
+  const navigate = useNavigate();
+  return (
+    <Report
+      campaign={campaign}
+      period={period}
+      onBack={() => navigate(period === "all" ? "/resumo?periodo=tudo" : "/resumo")}
+    />
+  );
+}
+
 /** Resumo (D28): o que mudou em frases, os balanços, os indicadores e a evolução. Sempre bruto, sem ponderação. */
 export function Summary({ campaign }: { campaign: CampaignAccess }) {
-  const [period, setPeriod] = useState<"7d" | "all">("7d");
-  const [report, setReport] = useState(false);
+  const [period, setPeriod] = usePeriod();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState("approval");
   const showMargins = useShowMargins();
   const { data, error, updatedAt } = usePoll<OverviewData>(
     `/api/campaigns/${campaign.id}/results/overview?period=${period}`,
     5 * 60_000,
   );
-  if (report) return <Report campaign={campaign} period={period} onBack={() => setReport(false)} />;
   if (error) return <ErrorState>{error}</ErrorState>;
   if (!data) return <LoadingState />;
   if (data.indicators.length === 0)
@@ -62,7 +82,10 @@ export function Summary({ campaign }: { campaign: CampaignAccess }) {
       >
         <Segmented value={period} onChange={setPeriod} options={PERIODS} size="sm" />
         <MarginsToggle />
-        <Button className="max-sm:w-full" onClick={() => setReport(true)}>
+        <Button
+          className="max-sm:w-full"
+          onClick={() => navigate(period === "all" ? "/resumo/boletim?periodo=tudo" : "/resumo/boletim")}
+        >
           <Printer />
           Boletim para reunião
         </Button>
@@ -89,25 +112,29 @@ export function Summary({ campaign }: { campaign: CampaignAccess }) {
 
 type DetailView = "insights" | "questions" | "progress" | "method";
 
-const DETAIL_VIEWS: { id: DetailView; label: string }[] = [
-  { id: "insights", label: "Cruzamentos" },
-  { id: "questions", label: "Pergunta a pergunta" },
-  { id: "progress", label: "Progresso do campo" },
-  { id: "method", label: "Como a pesquisa é feita" },
+// `path` é o trecho da URL depois de /detalhes
+const DETAIL_VIEWS: { id: DetailView; path: string; label: string }[] = [
+  { id: "insights", path: "cruzamentos", label: "Cruzamentos" },
+  { id: "questions", path: "perguntas", label: "Pergunta a pergunta" },
+  { id: "progress", path: "progresso", label: "Progresso do campo" },
+  { id: "method", path: "metodo", label: "Como a pesquisa é feita" },
 ];
 
 /** Detalhes: para quem quer ir além do resumo. */
 export function Details({ campaign }: { campaign: CampaignAccess }) {
-  const [view, setView] = useState<DetailView>("insights");
+  const navigate = useNavigate();
+  const current = DETAIL_VIEWS.find((v) => v.path === useParams().view);
+  if (!current) return <Navigate to={`/detalhes/${DETAIL_VIEWS[0].path}`} replace />;
+  const view = current.id;
   return (
     <>
       <PageHeader title="Detalhes" />
       <Segmented
         className="mb-4"
-        value={view}
-        onChange={setView}
+        value={current.path}
+        onChange={(path) => navigate(`/detalhes/${path}`)}
         size="sm"
-        options={DETAIL_VIEWS.map((v) => ({ value: v.id, label: v.label }))}
+        options={DETAIL_VIEWS.map((v) => ({ value: v.path, label: v.label }))}
       />
       {view === "insights" && <InsightsView campaign={campaign} />}
       {view === "questions" && <Questions campaign={campaign} />}
