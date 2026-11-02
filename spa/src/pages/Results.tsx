@@ -12,9 +12,9 @@ import { usePoll } from "../usePoll";
 import { Crosstab, Highlights, Rankings, Segments } from "./Insights";
 import { Method } from "./Method";
 import { Report } from "./Report";
-import { Balances, GridChart, Headlines, IndicatorTiles, TrendChart } from "./Overview";
+import { Balances, GridChart, Headlines, IndicatorTiles, StrataTable, TrendChart } from "./Overview";
 import { Progress } from "./Progress";
-import { FileText } from "lucide-react";
+import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,30 +52,29 @@ export function Summary({ campaign }: { campaign: CampaignAccess }) {
         title="Resumo"
         meta={
           <>
-            {last && `Última entrevista ${last.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} · `}
-            {data.today_n} hoje
-            {updatedAt && ` · painel atualizado às ${updatedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}
+            {data.n} entrevistas desde {since}
+            {period === "7d" && data.previous && ", comparado com a semana anterior"}
+            {last && ` · última ${last.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`}
+            {` · ${data.today_n} hoje`}
+            {updatedAt && ` · atualizado às ${updatedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}
           </>
         }
       >
-        <Button variant="outline" className="bg-card max-sm:w-full" onClick={() => setReport(true)}>
-          <FileText />
-          Boletim para reunião (PDF)
+        <Segmented value={period} onChange={setPeriod} options={PERIODS} size="sm" />
+        <MarginsToggle />
+        <Button className="max-sm:w-full" onClick={() => setReport(true)}>
+          <Printer />
+          Boletim para reunião
         </Button>
       </PageHeader>
-      <Toolbar>
-        <Segmented value={period} onChange={setPeriod} options={PERIODS} size="sm" />
-        <span className="text-sm text-muted-foreground">
-          {data.n} entrevistas desde {since}
-          {period === "7d" && data.previous && ", comparado com a semana anterior"}
-        </span>
-        <MarginsToggle />
-      </Toolbar>
       <Headlines items={data.headlines} title="O que a pesquisa mostra" />
-      <Balances balances={data.balances} />
       <IndicatorTiles data={data} selected={ind.key} onSelect={setSelected} />
-      <TrendChart ind={ind} events={data.events} />
-      <GridChart data={data} />
+      <div className="my-4 grid items-start gap-4 xl:grid-cols-2">
+        <TrendChart className="my-0 min-w-0" ind={ind} events={data.events} />
+        <GridChart className="my-0 min-w-0" data={data} />
+      </div>
+      <Balances balances={data.balances} />
+      <StrataTable data={data} />
       <Notice>
         <strong>Resultado bruto da pesquisa</strong>, ainda sem ajuste pelo perfil do eleitorado: mostra o que os
         entrevistados responderam e não é previsão de resultado.{" "}

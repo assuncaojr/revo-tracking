@@ -270,6 +270,9 @@ export interface GridRow {
   suppressed?: boolean;
   pct?: Record<string, number>;
   balance?: number;
+  /** meia largura (pontos) do intervalo de 95% do saldo; só pinta o saldo que passa dela */
+  balance_margin?: number;
+  balance_beyond?: boolean;
 }
 
 export interface Overview {

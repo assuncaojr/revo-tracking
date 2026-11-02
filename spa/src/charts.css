@@ -21,15 +21,11 @@ svg .crosshair { stroke: var(--muted-foreground); stroke-width: 1; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 .whisker { position: absolute; height: 2px; border-radius: 1px; opacity: 0.55; }
 .dot { position: absolute; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; box-shadow: 0 0 0 2px var(--card); }
-.gridbars { background: none; }
-.gridbars td { padding: 6px 8px; }
-.stack-cell { width: 70%; }
-.gridbars td:first-child { width: 200px; }
-.stack { display: flex; gap: 2px; height: 22px; }
-.stack > div { display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--foreground); min-width: 0; }
+.stack { display: flex; gap: 2px; height: 24px; }
+.stack > div { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--foreground); min-width: 0; }
 .stack > div.pos, .stack > div.neg { color: #fff; }
-.stack > div:first-child { border-radius: 4px 0 0 4px; }
-.stack > div:last-child { border-radius: 0 4px 4px 0; }
+.stack > div:first-child { border-radius: 6px 0 0 6px; }
+.stack > div:last-child { border-radius: 0 6px 6px 0; }
 .xdim { margin: 14px 0 6px; }
 .xdim h4 { margin: 0 0 4px; font-size: 13px; color: var(--muted-foreground); text-transform: uppercase; letter-spacing: 0.03em; }
 .xrow { display: grid; grid-template-columns: 220px 1fr 130px 44px; gap: 12px; align-items: center; min-height: 28px; border-bottom: 1px solid var(--grid-line); font-size: 13px; }
@@ -58,21 +54,19 @@ svg .crosshair { stroke: var(--muted-foreground); stroke-width: 1; }
 .ring-swatch { background: transparent !important; border: 2px solid; border-radius: 50% !important; box-sizing: border-box; }
 .leaflet-tooltip { font-family: inherit; font-size: 13px; }
 .leaflet-tooltip .muted { color: var(--muted-foreground); }
-.chip { display: inline-block; color: #fff; border-radius: 10px; padding: 1px 7px; font-weight: 600; }
 .dot.dot-same { box-shadow: 0 0 0 2px var(--card); }
-.balance-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-.balance-head strong { font-size: 15px; }
-.balance-bar { position: relative; display: flex; gap: 2px; height: 34px; }
-.balance-bar > div { display: flex; align-items: center; padding: 0 10px; font-weight: 650; font-size: 15px; min-width: 0; overflow: visible; white-space: nowrap; }
+.balance-bar { position: relative; display: flex; gap: 2px; height: 30px; }
+.balance-bar > div { display: flex; align-items: center; padding: 0 10px; font-weight: 650; font-size: 14px; min-width: 0; overflow: visible; white-space: nowrap; }
 .balance-bar .fav { background: var(--fav); color: #fff; border-radius: 6px 0 0 6px; }
 .balance-bar .mid { background: var(--mid); color: var(--foreground); justify-content: center; font-weight: 500; font-size: 13px; }
 .balance-bar .unfav { background: var(--unfav); color: #fff; justify-content: flex-end; border-radius: 0 6px 6px 0; }
 .balance-half { position: absolute; left: 50%; top: -6px; bottom: -6px; border-left: 2px solid var(--foreground); opacity: 0.6; z-index: 0; }
 .balance-bar > div { position: relative; z-index: 1; }
-.balance-legend { display: flex; justify-content: space-between; font-size: 13px; margin-top: 5px; gap: 12px; }
+.balance-legend { display: grid; grid-template-columns: auto 1fr auto; font-size: 13px; gap: 12px; }
+.balance-legend > :nth-child(2) { text-align: center; }
 .balance-legend .r { text-align: right; }
-.tile-gauge { height: 6px; background: var(--grid-line); border-radius: 3px; overflow: hidden; margin: 2px 0; }
-.tile-gauge > div { height: 100%; border-radius: 3px; }
+.tile-gauge { display: block; height: 6px; background: var(--muted); border-radius: 999px; overflow: hidden; }
+.tile-gauge > span { display: block; height: 100%; border-radius: 999px; }
 .tile-spark { flex: none; }
 svg .half { stroke: var(--foreground); stroke-width: 1; opacity: 0.35; }
 svg .half-label { fill: var(--muted-foreground); font-size: 11px; }
@@ -82,12 +76,9 @@ svg .half-label { fill: var(--muted-foreground); font-size: 11px; }
 .area-track { height: 10px; background: var(--grid-line); border-radius: 3px; overflow: hidden; }
 .area-track > span { display: block; height: 100%; }
 @media (max-width: 640px) {
-  .balance-head { flex-direction: column; gap: 0; }
   .balance-bar > div { padding: 0 6px; font-size: 13px; }
   .balance-legend { font-size: 12px; flex-wrap: wrap; }
   .tile-spark { display: none; }
-  .gridbars td:first-child { width: auto; font-size: 13px; }
-  .stack-cell { width: 58%; }
   .stack > div span { display: none; }
   .xrow { grid-template-columns: 1fr auto; grid-template-areas: "label value" "track track"; row-gap: 0; padding: 4px 0; }
   .xlabel { grid-area: label; white-space: normal; }

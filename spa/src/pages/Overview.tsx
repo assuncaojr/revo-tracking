@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Balance, CampaignEventItem, Estimate, Indicator, Overview as OverviewData } from "../api";
 import { useShowMargins } from "../prefs";
-import { changeColor } from "../tone";
+import { toneOf } from "../tone";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartCard } from "@/components/page";
 import { Legend } from "@/components/controls";
+import { ArrowDown, ArrowUp, Equal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Cores por entidade, em ordem fixa (paleta validada para daltonismo; ver skill de dataviz): cada estrato mantém
@@ -49,6 +50,7 @@ function weekday(iso: string): string {
 
 // --- blocos de indicadores ---
 
+/** Indicadores-chave: número grande, minilinha, régua e a variação na semana. Clicar troca o gráfico de evolução. */
 export function IndicatorTiles({
   data,
   selected,
@@ -60,50 +62,60 @@ export function IndicatorTiles({
 }) {
   const showMargins = useShowMargins();
   return (
-    <div className="my-4 grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(190px,1fr))] sm:gap-3">
-      {data.indicators.map((ind) => (
-        <button
-          key={ind.key}
-          className={cn(
-            "tile grid content-start gap-1 rounded-xl border bg-card p-3 text-left shadow-(--shadow-card) transition-colors hover:border-primary/40 sm:p-4",
-            ind.key === selected && "selected border-primary ring-[3px] ring-selection hover:border-primary print:border-border print:ring-0",
-          )}
-          onClick={() => onSelect(ind.key)}
-          aria-pressed={ind.key === selected}
-        >
-          <span className="text-sm text-muted-foreground">{ind.label}</span>
-          {ind.current.value == null ? (
-            <span className="py-2 text-sm text-muted-foreground">
-              {ind.current.suppressed ? `poucas entrevistas (${ind.current.n})` : "sem entrevistas"}
-            </span>
-          ) : (
-            <>
-              <div className="flex items-end justify-between gap-2">
-                <span className="text-2xl leading-tight font-semibold whitespace-nowrap tabular-nums sm:text-3xl">
-                  {fmt(ind.current.value, ind.mean)}
-                  {ind.mean && ind.scale && (
-                    <span className="text-sm font-normal text-muted-foreground"> de {ind.scale[1]}</span>
-                  )}
-                </span>
-                <Sparkline ind={ind} />
-              </div>
-              <div className="tile-gauge" aria-hidden>
-                <div
-                  style={{
-                    width: `${ind.mean && ind.scale ? (100 * ind.current.value) / ind.scale[1] : ind.current.value}%`,
-                    background: polarityColor(ind),
-                  }}
-                />
-              </div>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {showMargins && `${margin(ind.current, ind.mean)} · `}
-                {ind.current.n} entrevistas
+    <div
+      className={cn(
+        "my-4 grid grid-cols-2 gap-2 sm:gap-3",
+        data.indicators.length <= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3",
+      )}
+    >
+      {data.indicators.map((ind) => {
+        const v = ind.current.value;
+        return (
+          <button
+            key={ind.key}
+            className={cn(
+              "tile grid content-start gap-2.5 rounded-xl border bg-card p-3 text-left shadow-(--shadow-card) transition-colors hover:border-primary/40 sm:px-5 sm:py-4",
+              ind.key === selected &&
+                "selected border-primary ring-[3px] ring-selection hover:border-primary print:border-border print:ring-0",
+            )}
+            onClick={() => onSelect(ind.key)}
+            aria-pressed={ind.key === selected}
+          >
+            <span className="text-sm text-muted-foreground">{ind.label}</span>
+            {v == null ? (
+              <span className="py-2 text-sm text-muted-foreground">
+                {ind.current.suppressed ? `poucas entrevistas (${ind.current.n})` : "sem entrevistas"}
               </span>
-              {data.previous && <Change ind={ind} />}
-            </>
-          )}
-        </button>
-      ))}
+            ) : (
+              <>
+                <span className="flex items-end justify-between gap-3">
+                  <span className="text-[1.75rem] leading-none font-semibold tracking-tight whitespace-nowrap tabular-nums sm:text-[2rem]">
+                    {ind.mean ? nf1.format(v) : Math.round(v)}
+                    <span className="ml-0.5 text-sm font-normal tracking-normal text-muted-foreground">
+                      {ind.mean ? ` de ${ind.scale?.[1] ?? 10}` : "%"}
+                    </span>
+                  </span>
+                  <Sparkline ind={ind} />
+                </span>
+                <span className="tile-gauge" aria-hidden>
+                  <span
+                    style={{
+                      width: `${ind.mean && ind.scale ? (100 * v) / ind.scale[1] : v}%`,
+                      background: polarityColor(ind),
+                    }}
+                  />
+                </span>
+                {data.previous && <Change ind={ind} />}
+                {showMargins && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {margin(ind.current, ind.mean)} · {ind.current.n} entrevistas
+                  </span>
+                )}
+              </>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -112,8 +124,8 @@ export function IndicatorTiles({
 function Sparkline({ ind }: { ind: Indicator }) {
   const vals = ind.series.map((d) => d.rolling.value).filter((v): v is number => v != null);
   if (vals.length < 2) return null;
-  const w = 72;
-  const h = 28;
+  const w = 84;
+  const h = 30;
   const lo = Math.min(...vals);
   const hi = Math.max(...vals);
   const span = Math.max(hi - lo, ind.mean ? 0.5 : 4); // achata oscilação mínima
@@ -129,91 +141,119 @@ function Sparkline({ ind }: { ind: Indicator }) {
   );
 }
 
+/** Variação na semana: chip colorido só quando passa da margem; senão "estável" em cinza (não pinta ruído). */
+function Change({ ind }: { ind: Indicator }) {
+  if (!ind.change) return <span className="text-xs text-muted-foreground">sem semana anterior para comparar</span>;
+  const { diff, beyond_margin } = ind.change;
+  const shown = ind.mean ? nf1.format(Math.abs(diff)) : `${Math.round(Math.abs(diff))} pts`;
+  const arrow = Math.abs(diff) < (ind.mean ? 0.05 : 0.5) ? "→" : diff > 0 ? "↑" : "↓";
+  const good = ind.favorable ? diff > 0 : diff < 0;
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {beyond_margin ? (
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+            good ? "bg-fav-soft text-fav" : "bg-unfav-soft text-unfav",
+          )}
+          title={good ? "melhora real para a gestão" : "piora real para a gestão"}
+        >
+          {arrow} {shown}
+        </span>
+      ) : (
+        <span
+          className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground"
+          title={`${arrow} ${shown}: a variação cabe na margem de erro`}
+        >
+          estável
+        </span>
+      )}
+      <span className="text-xs text-muted-foreground">vs. semana anterior</span>
+    </span>
+  );
+}
+
 // --- resumo em balanços ---
 
 /** Cada pergunta como uma barra: a favor da gestão (azul) | meio (cinza) | contra (vermelho), com a marca da metade. */
 export function Balances({ balances }: { balances: Balance[] }) {
+  const showMargins = useShowMargins();
   if (!balances?.length) return null;
   return (
-    <Card className="balances my-4 gap-6 p-4 sm:p-5">
-      {balances.map((b) => (
-        <div key={b.question} className="break-inside-avoid">
-          <div className="balance-head">
-            <strong>{b.label}</strong>
-            <span className="text-sm text-muted-foreground">{b.n} entrevistas</span>
+    <ChartCard
+      className="balances"
+      title="A favor × contra a gestão"
+      description="Cada pergunta dividida entre quem apoia e quem rejeita a gestão. O traço marca a metade."
+    >
+      <div className="grid gap-x-8 gap-y-6 xl:grid-cols-3">
+        {balances.map((b) => (
+          <div key={b.question} className="grid content-start gap-2 break-inside-avoid">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <strong className="text-[15px]">{b.label}</strong>
+              {b.favorable && b.unfavorable && <BalanceVerdict b={b} />}
+            </div>
+            {b.favorable && b.unfavorable && b.other ? (
+              <>
+                <div className="balance-bar">
+                  <div className="fav" style={{ width: `${b.favorable.value}%` }} title={`${b.labels.favorable}: ${Math.round(b.favorable.value)}% ± ${Math.round((b.favorable.high - b.favorable.low) / 2)} pts`}>
+                    {b.favorable.value >= 8 && `${Math.round(b.favorable.value)}%`}
+                  </div>
+                  <div className="mid" style={{ width: `${b.other.value}%` }} title={`${b.labels.other}: ${Math.round(b.other.value)}%`}>
+                    {b.other.value >= 10 && `${Math.round(b.other.value)}%`}
+                  </div>
+                  <div className="unfav" style={{ width: `${b.unfavorable.value}%` }} title={`${b.labels.unfavorable}: ${Math.round(b.unfavorable.value)}% ± ${Math.round((b.unfavorable.high - b.unfavorable.low) / 2)} pts`}>
+                    {b.unfavorable.value >= 8 && `${Math.round(b.unfavorable.value)}%`}
+                  </div>
+                  <span className="balance-half" />
+                </div>
+                <div className="balance-legend">
+                  <span>
+                    <strong>{b.labels.favorable}</strong> {Math.round(b.favorable.value)}%
+                  </span>
+                  <span className="text-muted-foreground">
+                    {b.labels.other} {Math.round(b.other.value)}%
+                  </span>
+                  <span className="r">
+                    <strong>{b.labels.unfavorable}</strong> {Math.round(b.unfavorable.value)}%
+                  </span>
+                </div>
+                {showMargins && <span className="text-xs text-muted-foreground tabular-nums">{b.n} entrevistas</span>}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {b.suppressed ? `Poucas entrevistas (${b.n}) para mostrar.` : "Sem entrevistas."}
+              </p>
+            )}
           </div>
-          {b.favorable && b.unfavorable && b.other ? (
-            <>
-              <div className="balance-bar">
-                <div className="fav" style={{ width: `${b.favorable.value}%` }} title={`${b.labels.favorable}: ${Math.round(b.favorable.value)}% ± ${Math.round((b.favorable.high - b.favorable.low) / 2)} pts`}>
-                  {b.favorable.value >= 8 && `${Math.round(b.favorable.value)}%`}
-                </div>
-                <div className="mid" style={{ width: `${b.other.value}%` }} title={`${b.labels.other}: ${Math.round(b.other.value)}%`}>
-                  {b.other.value >= 10 && `${Math.round(b.other.value)}%`}
-                </div>
-                <div className="unfav" style={{ width: `${b.unfavorable.value}%` }} title={`${b.labels.unfavorable}: ${Math.round(b.unfavorable.value)}% ± ${Math.round((b.unfavorable.high - b.unfavorable.low) / 2)} pts`}>
-                  {b.unfavorable.value >= 8 && `${Math.round(b.unfavorable.value)}%`}
-                </div>
-                <span className="balance-half" />
-              </div>
-              <div className="balance-legend">
-                <span>
-                  <strong>{b.labels.favorable}</strong> {Math.round(b.favorable.value)}%
-                </span>
-                <span className="text-muted-foreground">
-                  {b.labels.other} {Math.round(b.other.value)}%
-                </span>
-                <span className="r">
-                  <strong>{b.labels.unfavorable}</strong> {Math.round(b.unfavorable.value)}%
-                </span>
-              </div>
-              <BalanceVerdict b={b} />
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {b.suppressed ? `Poucas entrevistas (${b.n}) para mostrar.` : "Sem entrevistas."}
-            </p>
-          )}
-        </div>
-      ))}
-    </Card>
+        ))}
+      </div>
+    </ChartCard>
   );
 }
 
-/** Frase de leitura: quem está à frente, e se a diferença passa da margem. */
+/** Leitura em chip: quem está à frente, ou empate técnico quando a diferença cabe na margem. */
 function BalanceVerdict({ b }: { b: Balance }) {
   const f = b.favorable!;
   const u = b.unfavorable!;
   const overlap = f.low <= u.high && u.low <= f.high;
-  const text = overlap
-    ? `Empate técnico entre “${b.labels.favorable.toLowerCase()}” e “${b.labels.unfavorable.toLowerCase()}”: a diferença cabe na margem.`
-    : f.value > u.value
-      ? `“${b.labels.favorable}” à frente por ${Math.round(f.value - u.value)} pontos.`
-      : `“${b.labels.unfavorable}” à frente por ${Math.round(u.value - f.value)} pontos.`;
-  return <p className="mt-2 text-sm">{text}</p>;
-}
-
-function Change({ ind }: { ind: Indicator }) {
-  if (!ind.change) return <span className="text-xs text-muted-foreground">sem semana anterior para comparar</span>;
-  const { diff, beyond_margin } = ind.change;
-  const unit = ind.mean ? "" : " pts";
-  const shown = ind.mean ? nf1.format(Math.abs(diff)) : Math.round(Math.abs(diff));
-  const arrow = Math.abs(diff) < (ind.mean ? 0.05 : 0.5) ? "→" : diff > 0 ? "↑" : "↓";
-  if (!beyond_margin)
+  if (overlap)
     return (
-      <span className="text-xs text-muted-foreground">
-        {arrow} {shown}
-        {unit} na semana · estável: a variação cabe na margem
+      <span
+        className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground"
+        title={`Empate técnico entre “${b.labels.favorable.toLowerCase()}” e “${b.labels.unfavorable.toLowerCase()}”: a diferença cabe na margem.`}
+      >
+        empate técnico
       </span>
     );
-  const good = ind.favorable ? diff > 0 : diff < 0;
+  const favAhead = f.value > u.value;
   return (
-    <span className="text-xs font-semibold">
-      <span className="chip" style={{ background: changeColor(diff, ind.favorable) }}>
-        {arrow} {shown}
-        {unit}
-      </span>{" "}
-      na semana · {good ? "melhora real para a gestão" : "piora real para a gestão"}
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+        favAhead ? "bg-fav-soft text-fav" : "bg-unfav-soft text-unfav",
+      )}
+    >
+      {favAhead ? b.labels.favorable : b.labels.unfavorable} à frente por {Math.round(Math.abs(f.value - u.value))} pts
     </span>
   );
 }
@@ -260,7 +300,16 @@ function niceDomain(ind: Indicator): [number, number, number] {
 }
 
 /** Média móvel de 3 dias (linha) com a faixa da margem de erro; cada dia sozinho em pontos cinza. */
-export function TrendChart({ ind, events = [] }: { ind: Indicator; events?: CampaignEventItem[] }) {
+export function TrendChart({
+  ind,
+  events = [],
+  className,
+}: {
+  ind: Indicator;
+  events?: CampaignEventItem[];
+  className?: string;
+}) {
+  const showMargins = useShowMargins();
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
   const [wrapRef, W] = useWidth<HTMLDivElement>(760);
@@ -294,10 +343,12 @@ export function TrendChart({ ind, events = [] }: { ind: Indicator; events?: Camp
 
   return (
     <ChartCard
-      title={`${ind.label}: evolução`}
+      className={className}
+      title={`${ind.label}, dia a dia`}
       description={
         <>
-          Linha: média dos últimos 3 dias, com a faixa da margem de erro. Pontos: cada dia sozinho (oscilam mais).
+          Linha: média dos últimos 3 dias{showMargins && ", com a faixa da margem de erro"}. Pontos: cada dia sozinho
+          (oscilam mais).
           {marks.length > 0 && " Números: marcos da campanha."}
         </>
       }
@@ -361,7 +412,7 @@ export function TrendChart({ ind, events = [] }: { ind: Indicator; events?: Camp
                 </text>
               </g>
             )}
-            {band && <path d={band} fill={color} opacity={0.12} />}
+            {showMargins && band && <path d={band} fill={color} opacity={0.12} />}
             {marks.map((m) => (
               <g key={`${m.day}-${m.n}`} className="mark">
                 <line x1={x(m.i)} x2={x(m.i)} y1={PAD.top + 9} y2={PAD.top + ih} />
@@ -458,13 +509,15 @@ export function TrendChart({ ind, events = [] }: { ind: Indicator; events?: Camp
 // Divergente: melhorou (azul) ↔ piorou (vermelho), "igual" no cinza neutro; não-resposta num cinza mais claro.
 const GRID_COLORS: Record<number, string> = { 0: "var(--div-pos)", 1: "var(--div-mid)", 2: "var(--div-neg)" };
 
-/** Barra 100% por área (melhorou | igual | piorou | não sabe), ordenada pelo saldo. */
-export function GridChart({ data }: { data: OverviewData }) {
+/** Balanço por área: barra 100% (melhorou | igual | piorou | não sabe), ordenada pelo saldo. O saldo só ganha cor
+    quando passa da margem de erro (calculada no núcleo). */
+export function GridChart({ data, className }: { data: OverviewData; className?: string }) {
+  const showMargins = useShowMargins();
   const g = data.grid;
   if (!g) return null;
   const color = (i: number) => GRID_COLORS[i] ?? "var(--div-none)";
   return (
-    <ChartCard title={g.text} description="Ordenado pelo saldo: quem disse que melhorou menos quem disse que piorou.">
+    <ChartCard className={className} title="Balanço por área" description={`${g.text} Ordenado pelo saldo: melhorou menos piorou.`}>
       <Legend
         items={[
           ...g.options.slice(0, 3).map((o, i) => ({ color: color(i), label: o.label })),
@@ -473,45 +526,85 @@ export function GridChart({ data }: { data: OverviewData }) {
             : []),
         ]}
       />
-      <Table className="gridbars">
+      <div className="grid gap-3">
+        {g.rows.map((r) => (
+          <div key={r.value} className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_3rem] items-center gap-3 text-sm sm:text-[15px]">
+            <span className="leading-tight">{r.label}</span>
+            {r.pct ? (
+              <div className="stack">
+                {g.options.map((o, i) => {
+                  const p = r.pct![o.value] ?? 0;
+                  if (p <= 0) return null;
+                  return (
+                    <div
+                      key={o.value}
+                      style={{ width: `${p}%`, background: color(i) }}
+                      title={`${o.label}: ${Math.round(p)}% (${r.n} entrevistas)`}
+                      className={i === 0 ? "pos" : i === 2 ? "neg" : ""}
+                    >
+                      {p >= 9 && i < 3 && <span>{Math.round(p)}%</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                {r.suppressed ? `poucas entrevistas (${r.n})` : "sem respostas"}
+              </span>
+            )}
+            <span
+              className={cn(
+                "text-right font-semibold tabular-nums",
+                r.balance == null || !r.balance_beyond ? "text-muted-foreground" : r.balance > 0 ? "text-fav" : "text-unfav",
+              )}
+              title={r.balance_margin != null ? `margem do saldo: ± ${Math.round(r.balance_margin)} pts` : undefined}
+            >
+              {r.balance != null ? `${r.balance > 0 ? "+" : r.balance < 0 ? "−" : ""}${Math.abs(Math.round(r.balance))}` : "—"}
+              {showMargins && r.balance_margin != null && (
+                <span className="block text-[11px] font-normal text-muted-foreground">± {Math.round(r.balance_margin)}</span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 border-t pt-3 text-xs text-muted-foreground">
+        Saldo em cinza: a diferença entre melhorou e piorou cabe na margem de erro.
+      </p>
+    </ChartCard>
+  );
+}
+
+// --- por estrato ---
+
+/** Indicadores por estrato, ao lado da cidade. A diferença só ganha cor quando a cidade fica fora da faixa do estrato. */
+export function StrataTable({ data }: { data: OverviewData }) {
+  const strata = data.strata;
+  if (strata.length < 2 || !data.indicators.length) return null;
+  return (
+    <ChartCard title="Por estrato" description="Diferença em relação à cidade; destacada só quando passa da margem de erro.">
+      <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Área</TableHead>
-            <TableHead />
-            <TableHead className="text-right">Saldo</TableHead>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Indicador</TableHead>
+            <TableHead className="text-right">Cidade</TableHead>
+            {strata.map((st) => (
+              <TableHead key={st} className="text-right">
+                <span className="inline-flex items-center gap-1.5">
+                  <i className="size-2 rounded-full" style={{ background: stratumColor(strata, st) }} aria-hidden />
+                  {st}
+                </span>
+              </TableHead>
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {g.rows.map((r) => (
-            <TableRow key={r.value} className="hover:bg-transparent">
-              <TableCell className="whitespace-normal">{r.label}</TableCell>
-              <TableCell className="stack-cell">
-                {r.pct ? (
-                  <div className="stack">
-                    {g.options.map((o, i) => {
-                      const p = r.pct![o.value] ?? 0;
-                      if (p <= 0) return null;
-                      return (
-                        <div
-                          key={o.value}
-                          style={{ width: `${p}%`, background: color(i) }}
-                          title={`${o.label}: ${Math.round(p)}% (${r.n} entrevistas)`}
-                          className={i === 0 ? "pos" : i === 2 ? "neg" : ""}
-                        >
-                          {p >= 9 && i < 3 && <span>{Math.round(p)}%</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    {r.suppressed ? `poucas entrevistas (${r.n})` : "sem respostas"}
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {r.balance != null ? `${r.balance > 0 ? "+" : ""}${Math.round(r.balance)}` : "—"}
-              </TableCell>
+          {data.indicators.map((ind) => (
+            <TableRow key={ind.key} className="hover:bg-transparent">
+              <TableCell className="font-medium">{ind.label}</TableCell>
+              <TableCell className="text-right font-semibold tabular-nums">{fmt(ind.current.value, ind.mean)}</TableCell>
+              {strata.map((st) => (
+                <StratumCell key={st} ind={ind} e={ind.by_stratum[st]} />
+              ))}
             </TableRow>
           ))}
         </TableBody>
@@ -520,32 +613,74 @@ export function GridChart({ data }: { data: OverviewData }) {
   );
 }
 
+function StratumCell({ ind, e }: { ind: Indicator; e: Estimate | undefined }) {
+  if (!e || e.value == null)
+    return (
+      <TableCell className="text-right text-xs text-muted-foreground">
+        {e?.suppressed ? `poucas entrevistas (${e.n})` : "—"}
+      </TableCell>
+    );
+  const ref = ind.current.value;
+  const tone = toneOf(e, ref, ind.favorable, ind.mean);
+  const diff = ref == null ? 0 : e.value - ref;
+  const size = ind.mean ? nf1.format(Math.abs(diff)) : String(Math.round(Math.abs(diff)));
+  const sign = Number(size.replace(",", ".")) === 0 ? "±" : diff > 0 ? "+" : "−";
+  return (
+    <TableCell className="text-right tabular-nums">
+      <span className="font-medium">{fmt(e.value, ind.mean)}</span>
+      <span
+        className={cn(
+          "ml-2 inline-block min-w-11 rounded-md px-1.5 py-0.5 text-center text-xs font-semibold",
+          !tone || tone === "same"
+            ? "text-muted-foreground"
+            : tone.startsWith("fav")
+              ? "bg-fav-soft text-fav"
+              : "bg-unfav-soft text-unfav",
+        )}
+        title={tone === "same" ? "dentro da margem de erro" : undefined}
+      >
+        {sign}
+        {size}
+      </span>
+    </TableCell>
+  );
+}
+
 // --- resumo em frases ---
 
-const TONE_MARK: Record<string, string> = { favorable: "var(--fav)", unfavorable: "var(--unfav)", neutral: "var(--data-neutral)" };
+const TONE_STYLE: Record<string, { Icon: typeof ArrowUp; cls: string; label: string }> = {
+  favorable: { Icon: ArrowUp, cls: "bg-fav-soft text-fav", label: "a favor da gestão" },
+  unfavorable: { Icon: ArrowDown, cls: "bg-unfav-soft text-unfav", label: "contra a gestão" },
+  neutral: { Icon: Equal, cls: "bg-muted text-muted-foreground", label: "neutro" },
+};
 
-/** "O que mudou" em frases curtas, com marcador na cor do sentido (azul a favor, vermelho contra, cinza neutro). */
+/** Percentuais e pontos da frase em negrito, para o olho achar o número rápido. */
+function emphasize(text: string) {
+  return text
+    .split(/(\d+(?:[.,]\d+)?%|[+−-]?\d+(?:[.,]\d+)? pontos?)/)
+    .map((part, i) => (i % 2 ? <strong key={i} className="font-semibold">{part}</strong> : part));
+}
+
+/** "O que mudou" em frases curtas, cada uma com o selo do sentido (azul a favor, vermelho contra, cinza neutro). */
 export function Headlines({ items, title }: { items: { tone: string; text: string }[]; title: string }) {
   if (!items.length) return null;
   return (
-    <Card className="headlines my-4 gap-3 p-4 break-inside-avoid sm:p-5">
-      <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
-      <ul className="grid gap-2.5">
-        {items.map((h) => (
-          <li key={h.text} className="grid grid-cols-[10px_1fr] items-baseline gap-3 text-[15px] leading-snug sm:text-base">
-            <i className="size-2.5 translate-y-px rounded-full" style={{ background: TONE_MARK[h.tone] ?? TONE_MARK.neutral }} aria-hidden />
-            <span>{h.text}</span>
-          </li>
-        ))}
+    <Card className="headlines my-4 gap-5 p-4 break-inside-avoid sm:p-6">
+      <h3 className="text-[15px] font-semibold">{title}</h3>
+      <ul className="grid gap-x-8 gap-y-4 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
+        {items.map((h) => {
+          const t = TONE_STYLE[h.tone] ?? TONE_STYLE.neutral;
+          return (
+            <li key={h.text} className="flex items-start gap-3 text-[15px] leading-relaxed">
+              <span className={cn("grid size-7 shrink-0 place-items-center rounded-lg", t.cls)}>
+                <t.Icon className="size-4" strokeWidth={2.4} aria-hidden />
+                <span className="sr-only">{t.label}:</span>
+              </span>
+              <span>{emphasize(h.text)}</span>
+            </li>
+          );
+        })}
       </ul>
-      <Legend
-        className="mb-0 text-xs"
-        items={[
-          { color: TONE_MARK.favorable, label: "a favor da gestão" },
-          { color: TONE_MARK.unfavorable, label: "contra a gestão" },
-          { color: TONE_MARK.neutral, label: "neutro" },
-        ]}
-      />
     </Card>
   );
 }

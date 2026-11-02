@@ -41,10 +41,10 @@ export function MarginsToggle() {
   const on = useShowMargins();
   const id = useId();
   return (
-    <div className="no-print flex items-center gap-2">
+    <div className="no-print flex h-8 items-center gap-2 rounded-md border bg-card px-3 shadow-xs">
       <Switch id={id} checked={on} onCheckedChange={setShowMargins} />
-      <Label htmlFor={id} className="font-normal text-muted-foreground">
-        Mostrar margens de erro
+      <Label htmlFor={id} className="font-normal">
+        Margens de erro
       </Label>
     </div>
   );
