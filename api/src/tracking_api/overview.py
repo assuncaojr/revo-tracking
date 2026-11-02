@@ -240,7 +240,7 @@ def overview(cid: uuid.UUID, user: AuthUser, s: DbSession, period: Period = "7d"
             pct = {k: round(100 * v / n, 1) for k, v in counts.items()}
             first, last = opt_defs[0]["value"], opt_defs[-1]["value"]
             grid_rows.append({"value": r["value"], "label": r["label"], "n": n, "pct": pct,
-                              "balance": round(pct.get(first, 0) - pct.get(last, 0), 1)})
+                              **_balance_margin(counts.get(first, 0), counts.get(last, 0), n)})
         grid = {"key": grid_q["key"], "text": grid_q["text"],
                 "options": [{"value": o["value"], "label": o["label"]} for o in opt_defs]
                 + [{"value": k, "label": v} for k, v in nonresp.items()],
@@ -267,6 +267,15 @@ def overview(cid: uuid.UUID, user: AuthUser, s: DbSession, period: Period = "7d"
                                         .order_by(models.CampaignEvent.day))]
     out["headlines"] = headlines(c, out)
     return out
+
+
+def _balance_margin(pos: int, neg: int, n: int) -> dict:
+    """Saldo (melhorou − piorou) em pontos, com a margem de 95% da diferença de duas proporções da mesma
+    amostra: var = (p1 + p2 − (p1 − p2)²) / n. O painel só pinta o saldo que passa da margem."""
+    p1, p2 = pos / n, neg / n
+    half = Z * math.sqrt(max(0.0, p1 + p2 - (p1 - p2) ** 2) / n)
+    return {"balance": round(100 * (p1 - p2), 1), "balance_margin": round(100 * half, 1),
+            "balance_beyond": abs(p1 - p2) > half}
 
 
 def _balance(c: Context, rows: list, cfg: dict) -> dict:

@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from tracking_api import demo
 from tracking_api.db import session_factory
-from tracking_api.overview import wilson
+from tracking_api.overview import _balance_margin, wilson
 from test_panel import login, users  # noqa: F401  (fixture)
 
 
@@ -16,6 +16,15 @@ def test_wilson_fica_dentro_de_0_a_100_e_encolhe_com_n():
     _, lo1000, hi1000 = wilson(500, 1000)
     assert lo100 < lo1000 < 0.5 < hi1000 < hi100
     assert round(hi1000 - lo1000, 3) == 0.062  # ±3,1 pontos com 1.000 entrevistas
+
+
+def test_saldo_da_grade_so_passa_da_margem_com_folga():
+    empate = _balance_margin(42, 40, 100)
+    assert empate["balance"] == 2.0 and not empate["balance_beyond"]
+    assert 17 < empate["balance_margin"] < 18.5  # ~±18 pontos com 100 entrevistas
+    folga = _balance_margin(61, 25, 100)
+    assert folga["balance"] == 36.0 and folga["balance_beyond"]
+    assert _balance_margin(0, 0, 10) == {"balance": 0.0, "balance_margin": 0.0, "balance_beyond": False}
 
 
 def _send(client, auth, make_interview, n: int, answers: dict, day_offset: int = 0, start_minute: int = 0):
