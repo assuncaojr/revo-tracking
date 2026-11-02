@@ -14,7 +14,7 @@ import { ChartCard, EmptyState, ErrorState, LoadingState, Notice, PageHeader, To
 
 const FAV = "var(--fav)";
 const UNFAV = "var(--unfav)";
-const SAME = "#b9b8b2";
+const SAME = "var(--mid)";
 
 /** Bairros (D28): o político pensa em bairro. Lista comparando com a cidade, ficha de cada um e o mapa. */
 export function Neighborhoods({ campaign }: { campaign: CampaignAccess }) {

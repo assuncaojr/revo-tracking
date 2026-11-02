@@ -9,8 +9,8 @@ import { Legend } from "@/components/controls";
 import { ChartCard, EmptyState } from "@/components/page";
 
 const BLUE = "var(--series-1)";
-const FAV = "#2a78d6";
-const UNFAV = "#e34948";
+const FAV = "var(--fav)";
+const UNFAV = "var(--unfav)";
 
 /** Régua comum a todos os cruzamentos da tela: arredondada a 10 pontos em volta dos dados (percentual) ou a escala. */
 function domain(groups: CrossGroup[], mean: boolean): [number, number] {
@@ -49,7 +49,7 @@ export function Crosstab({ data }: { data: InsightsData }) {
       <Legend
         items={[
           { color: FAV, label: "mais favorável à gestão que o total" },
-          { color: "#9a9a94", label: TONE_LABELS.same },
+          { color: "var(--data-neutral)", label: TONE_LABELS.same },
           { color: UNFAV, label: "menos favorável à gestão que o total" },
         ]}
       />
@@ -68,7 +68,7 @@ export function Crosstab({ data }: { data: InsightsData }) {
             const tone = toneOf(g, ct.total.value, ct.indicator.favorable, mean);
             // Ponto pequeno no branco: só direção (azul, vermelho, cinza), sempre no tom forte; o tamanho da
             // diferença já está no valor escrito ao lado
-            const color = !tone ? BLUE : tone === "same" ? "#9a9a94" : tone.startsWith("fav") ? FAV : UNFAV;
+            const color = !tone ? BLUE : tone === "same" ? "var(--data-neutral)" : tone.startsWith("fav") ? FAV : UNFAV;
             return (
             <div key={g.group} className="xrow">
               <div className="xlabel">{g.label}</div>
@@ -141,7 +141,7 @@ export function Segments({ data }: { data: InsightsData }) {
         items={[
           { color: TONE_COLORS.fav2, label: "a favor da gestão" },
           { color: TONE_COLORS.unfav2, label: "contra a gestão" },
-          { color: "#9a9a94", label: "dividido" },
+          { color: "var(--data-neutral)", label: "dividido" },
           { color: "", label: "· cor mais forte = segmento maior" },
         ]}
       />
@@ -168,7 +168,7 @@ export function Segments({ data }: { data: InsightsData }) {
                 const name = sg.names[`${r.value}|${c.value}`];
                 const a = cell?.pct != null ? 0.15 + 0.6 * (cell.pct / max) : 0;
                 const tone = sg.tones[`${r.value}|${c.value}`];
-                const rgb = tone === "favorable" ? "28, 92, 171" : tone === "unfavorable" ? "201, 58, 57" : "120, 118, 110";
+                const rgb = tone === "favorable" ? "10, 111, 216" : tone === "unfavorable" ? "217, 45, 58" : "79, 91, 133";
                 return (
                   <TableCell
                     key={c.value}

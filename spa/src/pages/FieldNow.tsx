@@ -11,7 +11,7 @@ import { StrataProgress } from "@/components/strata";
 import { cn } from "@/lib/utils";
 
 // Célula que pede atenção (taxa de NR alta, aparelho sem contato, bateria baixa, alertas abertos)
-const WARN = "bg-amber-50 font-semibold text-amber-700";
+const WARN = "bg-warn-soft font-semibold text-warn-ink";
 
 /** Painel de operação da equipe: quem está produzindo, como estão os aparelhos, cotas do dia. */
 export function FieldNow({ campaignId }: { campaignId: string }) {

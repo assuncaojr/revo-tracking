@@ -13,10 +13,10 @@ import { ChartCard, ErrorState, Toolbar } from "@/components/page";
 
 // Hexágono pintado pela comparação com a média da área inteira (tone.ts): azul = mais favorável à gestão,
 // vermelho = menos, cinza = igual dentro da margem. Leitura direta para quem não é técnico.
-const SUPPRESSED = "#f1f0ed";
-const COMPLETE = "#2a78d6";
-const NOT_COMPLETE = "#9a9a94";
-const FLAGGED = "#d03b3b"; // cor de status (crítico), sempre com rótulo na legenda
+const SUPPRESSED = "#eef1fd";
+const COMPLETE = "#0a6fd8";
+const NOT_COMPLETE = "#9aa6c8";
+const FLAGGED = "#d92d3a"; // cor de status (crítico), sempre com rótulo na legenda
 
 const TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -93,7 +93,7 @@ function Opinion({ campaign }: { campaign: CampaignAccess }) {
       for (const c of data.cells) {
         const tone = toneOf(c, ref, data.indicator.favorable, mean);
         const poly = L.polygon(c.polygon, {
-          color: tone ? "#ffffff" : "#b9b8b2",
+          color: tone ? "#ffffff" : "#c3cae0",
           weight: 1.5,
           fillColor: tone ? TONE_COLORS[tone] : SUPPRESSED,
           fillOpacity: tone ? 0.78 : 0.5,
@@ -161,7 +161,7 @@ function Opinion({ campaign }: { campaign: CampaignAccess }) {
             <Legend
               items={[
                 ...TONE_ORDER.map((t) => ({ color: TONE_COLORS[t], label: TONE_LABELS[t] })),
-                { color: SUPPRESSED, label: "poucas entrevistas", outline: "#b9b8b2" },
+                { color: SUPPRESSED, label: "poucas entrevistas", outline: "#c3cae0" },
               ]}
             />
           </>
@@ -185,7 +185,7 @@ function Coverage({ campaignId }: { campaignId: string }) {
       if (!data) return;
       const bounds: [number, number][] = [];
       for (const p of data.points) {
-        L.circleMarker([p.lat, p.lng], { radius: 7, color: "#1d2330", weight: 2, fillOpacity: 0 })
+        L.circleMarker([p.lat, p.lng], { radius: 7, color: "#0b1440", weight: 2, fillOpacity: 0 })
           .bindTooltip(`Ponto de trabalho: ${escape(p.name)}`)
           .addTo(layer);
         bounds.push([p.lat, p.lng]);
@@ -249,7 +249,7 @@ function Coverage({ campaignId }: { campaignId: string }) {
             <i className="ring-swatch" style={{ borderColor: FLAGGED }} /> Com alerta aberto
           </span>
           <span>
-            <i className="ring-swatch" style={{ borderColor: "#1d2330" }} /> Ponto de trabalho
+            <i className="ring-swatch" style={{ borderColor: "#0b1440" }} /> Ponto de trabalho
           </span>
         </div>
       </ChartCard>

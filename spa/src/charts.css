@@ -4,19 +4,19 @@
 .bar > div { height: 100%; background: var(--series-1); }
 .bar-col { width: 40%; }
 .hbar { position: relative; height: 22px; background: var(--background); border-radius: 4px; }
-.hbar > div { position: absolute; inset: 0 auto 0 0; background: #cfe0f6; border-radius: 4px; }
+.hbar > div { position: absolute; inset: 0 auto 0 0; background: var(--fav-soft); border-radius: 4px; }
 .hbar > span { position: relative; padding-left: 8px; line-height: 22px; font-variant-numeric: tabular-nums; }
 .key { display: inline-block; min-width: 34px; color: var(--muted-foreground); font-weight: 600; }
 .chart-wrap { position: relative; }
 .chart-wrap svg { width: 100%; height: auto; display: block; }
 svg .grid { stroke: var(--grid-line); stroke-width: 1; }
 svg .axis { fill: var(--muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
-svg .daily { fill: #a3a7b0; stroke: var(--card); stroke-width: 2; }
-svg .daily.partial { fill: var(--card); stroke: #a3a7b0; stroke-width: 1.5; }
+svg .daily { fill: var(--data-neutral); stroke: var(--card); stroke-width: 2; }
+svg .daily.partial { fill: var(--card); stroke: var(--data-neutral); stroke-width: 1.5; }
 svg .ring { stroke: var(--card); stroke-width: 2; }
 svg .end-label { fill: var(--foreground); font-size: 13px; font-weight: 600; }
 svg .crosshair { stroke: var(--muted-foreground); stroke-width: 1; }
-.tooltip { position: absolute; top: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); pointer-events: none; white-space: nowrap; display: grid; gap: 2px; }
+.tooltip { position: absolute; top: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 14px rgba(14, 26, 79, 0.1); pointer-events: none; white-space: nowrap; display: grid; gap: 2px; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 .whisker { position: absolute; height: 2px; border-radius: 1px; opacity: 0.55; }
@@ -35,7 +35,7 @@ svg .crosshair { stroke: var(--muted-foreground); stroke-width: 1; }
 .xrow { display: grid; grid-template-columns: 220px 1fr 130px 44px; gap: 12px; align-items: center; min-height: 28px; border-bottom: 1px solid var(--grid-line); font-size: 13px; }
 .xlabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .xtrack { position: relative; height: 28px; }
-.xtotal { position: absolute; top: 2px; bottom: 2px; width: 1px; background: #9a9a94; }
+.xtotal { position: absolute; top: 2px; bottom: 2px; width: 1px; background: var(--data-neutral); }
 .xvalue { font-variant-numeric: tabular-nums; }
 .xn { text-align: right; font-variant-numeric: tabular-nums; }
 .xaxis { border-bottom: 0; }
@@ -47,7 +47,7 @@ svg .crosshair { stroke: var(--muted-foreground); stroke-width: 1; }
 .rrow { display: grid; grid-template-columns: 220px 1fr 56px auto; gap: 12px; align-items: center; min-height: 28px; font-size: 13px; }
 .rrow.nr { color: var(--muted-foreground); }
 .rtrack { position: relative; height: 14px; }
-.rbar { height: 14px; background: #5b6472; border-radius: 0 4px 4px 0; }
+.rbar { height: 14px; background: var(--data-ink); border-radius: 0 4px 4px 0; }
 .rrow.nr .rbar { background: var(--div-mid); }
 .rwhisker { position: absolute; top: 6px; height: 2px; background: var(--foreground); opacity: 0.45; }
 .rvalue { font-variant-numeric: tabular-nums; }
@@ -106,7 +106,7 @@ svg .half-label { fill: var(--muted-foreground); font-size: 11px; }
   .map { height: 380px; }
   .legend { gap: 8px; font-size: 12px; }
 }
-svg .mark line { stroke: #5b6472; stroke-width: 1; }
+svg .mark line { stroke: var(--data-ink); stroke-width: 1; }
 svg .mark circle { fill: var(--foreground); stroke: var(--card); stroke-width: 2; }
 svg .mark text { fill: #fff; font-size: 11px; font-weight: 700; }
 .marks { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }

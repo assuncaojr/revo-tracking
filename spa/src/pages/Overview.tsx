@@ -65,8 +65,8 @@ export function IndicatorTiles({
         <button
           key={ind.key}
           className={cn(
-            "tile grid content-start gap-1 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:border-foreground/30 sm:p-4",
-            ind.key === selected && "selected border-foreground ring-1 ring-foreground hover:border-foreground print:border-border print:ring-0",
+            "tile grid content-start gap-1 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:border-primary/40 sm:p-4",
+            ind.key === selected && "selected border-primary ring-[3px] ring-selection hover:border-primary print:border-border print:ring-0",
           )}
           onClick={() => onSelect(ind.key)}
           aria-pressed={ind.key === selected}
@@ -522,7 +522,7 @@ export function GridChart({ data }: { data: OverviewData }) {
 
 // --- resumo em frases ---
 
-const TONE_MARK: Record<string, string> = { favorable: "var(--fav)", unfavorable: "var(--unfav)", neutral: "#9a9a94" };
+const TONE_MARK: Record<string, string> = { favorable: "var(--fav)", unfavorable: "var(--unfav)", neutral: "var(--data-neutral)" };
 
 /** "O que mudou" em frases curtas, com marcador na cor do sentido (azul a favor, vermelho contra, cinza neutro). */
 export function Headlines({ items, title }: { items: { tone: string; text: string }[]; title: string }) {

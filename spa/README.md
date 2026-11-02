@@ -16,11 +16,12 @@ Cor só nos dados: azul = a favor da gestão, vermelho = contra, cinza = dentro 
 
 Em todo acesso: login com senha + código do app autenticador, aviso de que o sistema não garante eleição no primeiro acesso (D16) e marca d'água com nome, e-mail e horário.
 
-## Visual (D30)
+## Visual (D30, D32)
 Tailwind v4 + shadcn/ui, fonte Geist, sem modo escuro. Ícones: `lucide-react`.
+- **Moldura (D32):** menu lateral agrupado (Operação, Resultados, Gestão) a partir de 1024 px; abaixo disso, barra de cima, navegação embaixo (três seções + "Mais") e o mesmo menu numa gaveta (`Sheet`). Tudo em `App.tsx`.
 - **Interface:** componentes de `src/components/ui/` (do shadcn, copiados para cá: podem ser editados) e as peças do painel em `src/components/`: `page.tsx` (cabeçalho de página, card de gráfico, estados de carregando/erro/vazio, aviso, número em destaque), `controls.tsx` (seleção, segmentado, legenda), `dialogs.tsx` (`confirmDialog`/`promptDialog`, no lugar de `window.confirm`/`prompt`), `strata.tsx`. Aviso de ação feita ou falha: `toast` do `sonner`.
 - **Visualizações de dados próprias** (barras de balanço, cruzamentos, rankings, lista de bairros, gráficos em SVG, mapa): `src/charts.css`, que usa os tokens. Não têm equivalente no shadcn.
-- **Tokens:** em `src/index.css`. Interface em grafite e cinza (`--primary`, `--muted`…); cor só nos dados (`--fav`, `--unfav`, `--div-*`, `--series-*`).
+- **Tokens:** em `src/index.css`. Interface numa família de índigo (`--primary`, `--sidebar-*`, `--muted`…); cor de sentido só nos dados (`--fav`, `--unfav`, `--mid`, `--div-*`, `--series-*`, `--data-neutral`); âmbar (`--warn-*`) só para estado da operação. Nada de hex solto em página: use o token (exceção: cores que o Leaflet precisa literais, em `tone.ts` e `MapView.tsx`).
 - Componente que falta: `pnpm dlx shadcn@latest add <nome>` e **confira o diff**: o CLI costuma instalar um pacote npm `cn` (de terceiros) no lugar de usar `src/lib/utils.ts`, e o `sonner` traz `next-themes`. Remova os dois e troque o import para `@/lib/utils`.
 - Não podem quebrar: boletim impresso (`@media print` em `index.css`, classe `no-print`), marca d'água, celular (390 px).
 

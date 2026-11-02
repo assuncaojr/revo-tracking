@@ -67,17 +67,17 @@ export function Segmented<T extends string>({
     <div className={cn("max-w-full overflow-x-auto [scrollbar-width:none]", className)}>
       <ToggleGroup
         type="single"
-        variant="outline"
         size={size}
+        spacing={0.5}
         value={value}
         onValueChange={(v) => v && onChange(v as T)}
-        className="bg-card"
+        className="rounded-lg bg-secondary p-[3px]"
       >
         {options.map((o) => (
           <ToggleGroupItem
             key={o.value}
             value={o.value}
-            className="px-3 whitespace-nowrap data-[state=on]:bg-secondary data-[state=on]:font-semibold"
+            className="px-3 whitespace-nowrap text-foreground/80 hover:bg-card/60 hover:text-foreground data-[state=on]:bg-card data-[state=on]:font-semibold data-[state=on]:text-primary data-[state=on]:shadow-xs"
           >
             {o.label}
           </ToggleGroupItem>

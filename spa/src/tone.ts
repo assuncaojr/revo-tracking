@@ -7,11 +7,11 @@ import type { Estimate } from "./api";
 export type Tone = "fav2" | "fav1" | "same" | "unfav1" | "unfav2";
 
 export const TONE_COLORS: Record<Tone, string> = {
-  fav2: "#1c5cab",
-  fav1: "#86b6ef",
-  same: "#d9d8d4",
-  unfav1: "#f0a09f",
-  unfav2: "#c93a39",
+  fav2: "#0a6fd8",
+  fav1: "#8cbdf5",
+  same: "#c3cae0",
+  unfav1: "#f4a3a9",
+  unfav2: "#d92d3a",
 };
 
 export const TONE_LABELS: Record<Tone, string> = {

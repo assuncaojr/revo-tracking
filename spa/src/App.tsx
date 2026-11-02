@@ -11,27 +11,52 @@ import { Manage } from "./pages/Manage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import {
+  Activity,
+  ChartColumn,
+  ClipboardList,
+  LayoutDashboard,
+  LogOut,
+  MapPin,
+  Menu,
+  TriangleAlert,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { DialogHost } from "@/components/dialogs";
+import { cn } from "@/lib/utils";
 
 type Tab = "field" | "flags" | "summary" | "hoods" | "details" | "questionnaire" | "manage";
+type Group = "ops" | "results" | "admin";
 
-const TABS: { id: Tab; label: string; staffOnly?: boolean; roles?: Role[] }[] = [
-  { id: "field", label: "Campo agora", staffOnly: true },
-  { id: "flags", label: "Alertas", staffOnly: true },
-  { id: "summary", label: "Resumo" },
-  { id: "hoods", label: "Bairros" },
-  { id: "details", label: "Detalhes" },
-  { id: "questionnaire", label: "Questionário" },
-  { id: "manage", label: "Cadastros", roles: ["admin", "supervisor"] },
+const GROUPS: { id: Group; label: string }[] = [
+  { id: "ops", label: "Operação" },
+  { id: "results", label: "Resultados" },
+  { id: "admin", label: "Gestão" },
 ];
+
+const TABS: { id: Tab; label: string; group: Group; icon: LucideIcon; staffOnly?: boolean; roles?: Role[] }[] = [
+  { id: "field", label: "Campo agora", group: "ops", icon: Activity, staffOnly: true },
+  { id: "flags", label: "Alertas", group: "ops", icon: TriangleAlert, staffOnly: true },
+  { id: "summary", label: "Resumo", group: "results", icon: LayoutDashboard },
+  { id: "hoods", label: "Bairros", group: "results", icon: MapPin },
+  { id: "details", label: "Detalhes", group: "results", icon: ChartColumn },
+  { id: "questionnaire", label: "Questionário", group: "admin", icon: ClipboardList },
+  { id: "manage", label: "Cadastros", group: "admin", icon: Users, roles: ["admin", "supervisor"] },
+];
+
+// No celular, a barra de baixo leva as três seções mais usadas que o papel enxerga; o resto fica em "Mais"
+const MOBILE_PRIORITY: Tab[] = ["summary", "hoods", "field", "details"];
+
+type TabDef = (typeof TABS)[number];
 
 export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const loadMe = useCallback(async () => {
     try {
@@ -49,10 +74,11 @@ export function App() {
   }, [loadMe]);
 
   const campaign = me?.campaigns.find((c) => c.id === campaignId) ?? null;
-  const tabs = TABS.filter(
-    (t) => (!t.staffOnly || campaign?.staff) && (!t.roles || (campaign && t.roles.includes(campaign.role))),
-  );
+  const tabs = campaign?.disclaimer_accepted
+    ? TABS.filter((t) => (!t.staffOnly || campaign.staff) && (!t.roles || t.roles.includes(campaign.role)))
+    : [];
   const current = tab && tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
+  const currentTab = tabs.find((t) => t.id === current);
 
   if (me === undefined) return <Centered>Carregando…</Centered>;
   if (me === null) return <Login onDone={loadMe} />;
@@ -62,80 +88,246 @@ export function App() {
     await api.post("/api/auth/logout");
     setMe(null);
   };
+  const go = (id: Tab) => {
+    setTab(id);
+    setMenuOpen(false);
+    window.scrollTo({ top: 0 });
+  };
+
+  const sidebar = (
+    <SidebarBody
+      me={me}
+      campaign={campaign}
+      tabs={tabs}
+      current={current}
+      onGo={go}
+      onCampaign={setCampaignId}
+      onLogout={logout}
+    />
+  );
+  const mobileTabs = MOBILE_PRIORITY.map((id) => tabs.find((t) => t.id === id))
+    .filter((t): t is TabDef => !!t)
+    .slice(0, 3);
 
   return (
     <>
       <Watermark me={me} />
       <Toaster />
       <DialogHost />
-      <header className="no-print sticky top-0 z-20 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-              {campaign.name.slice(0, 1).toUpperCase()}
-            </span>
-            <div className="min-w-0 leading-tight">
-              <div className="truncate font-semibold">{campaign.name}</div>
-              <div className="text-xs text-muted-foreground">{ROLE_LABELS[campaign.role]}</div>
+      <div className="flex min-h-screen">
+        <aside className="no-print sticky top-0 hidden h-screen w-60 shrink-0 bg-sidebar text-sidebar-foreground lg:block">
+          {sidebar}
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col max-lg:pb-[calc(4.25rem+env(safe-area-inset-bottom))]">
+          <header className="no-print sticky top-0 z-20 flex items-center gap-3 bg-sidebar px-4 py-3 text-sidebar-foreground lg:hidden">
+            <CampaignMark campaign={campaign} />
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="truncate font-semibold text-white">{currentTab?.label ?? campaign.name}</div>
+              <div className="truncate text-xs text-sidebar-muted">{campaign.name}</div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {me.campaigns.length > 1 && (
-              <Select value={campaign.id} onValueChange={setCampaignId}>
-                <SelectTrigger size="sm" className="max-w-[46vw] bg-card">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {me.campaigns.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <span className="hidden text-sm text-muted-foreground sm:inline">{me.name}</span>
-            <Button variant="ghost" size="sm" onClick={logout}>
-              <LogOut />
-              Sair
-            </Button>
-          </div>
-        </div>
-        {campaign.disclaimer_accepted && (
-          <Tabs value={current} onValueChange={(v) => setTab(v as Tab)}>
-            <TabsList
-              variant="line"
-              className="mx-auto flex h-11! w-full max-w-[1280px] justify-start overflow-x-auto px-2 [scrollbar-width:none] sm:px-4"
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Menu"
+              className="size-11 text-white hover:bg-sidebar-accent hover:text-white"
+              onClick={() => setMenuOpen(true)}
             >
-              {tabs.map((t) => (
-                <TabsTrigger key={t.id} value={t.id} className="flex-none px-3">
-                  {t.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        )}
-      </header>
-      {!campaign.disclaimer_accepted ? (
-        <DisclaimerGate campaign={campaign} onAccepted={loadMe} />
-      ) : (
-        <>
-          <main className="mx-auto max-w-[1280px] px-4 pt-5 pb-6 sm:px-6 sm:pb-20 print:max-w-none print:p-0">
-            {current === "field" && <FieldNow campaignId={campaign.id} />}
-            {current === "flags" && <Flags campaign={campaign} />}
-            {current === "summary" && <Summary campaign={campaign} />}
-            {current === "hoods" && <Neighborhoods campaign={campaign} />}
-            {current === "details" && <Details campaign={campaign} />}
-            {current === "questionnaire" && <Questionnaire campaign={campaign} />}
-            {current === "manage" && <Manage campaign={campaign} />}
-          </main>
-          <footer className="no-print fixed inset-x-0 bottom-0 border-t bg-card px-4 py-2 text-xs text-muted-foreground max-sm:static max-sm:pb-4 sm:px-6">
+              <Menu className="size-5" />
+            </Button>
+          </header>
+
+          {!campaign.disclaimer_accepted ? (
+            <DisclaimerGate campaign={campaign} onAccepted={loadMe} />
+          ) : (
+            <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 pt-5 pb-8 sm:px-6 lg:px-10 lg:pt-7 print:max-w-none print:p-0">
+              {currentTab && (
+                <div className="no-print mb-1 text-sm text-muted-foreground">
+                  {GROUPS.find((g) => g.id === currentTab.group)?.label}
+                </div>
+              )}
+              {current === "field" && <FieldNow campaignId={campaign.id} />}
+              {current === "flags" && <Flags campaign={campaign} />}
+              {current === "summary" && <Summary campaign={campaign} />}
+              {current === "hoods" && <Neighborhoods campaign={campaign} />}
+              {current === "details" && <Details campaign={campaign} />}
+              {current === "questionnaire" && <Questionnaire campaign={campaign} />}
+              {current === "manage" && <Manage campaign={campaign} />}
+            </main>
+          )}
+          <footer className="no-print border-t bg-card/95 px-4 py-2 text-xs text-muted-foreground backdrop-blur sm:px-6 lg:sticky lg:bottom-0 lg:px-10">
             {DISCLAIMER} Uso interno da campanha: não divulgar.
           </footer>
-        </>
+        </div>
+      </div>
+
+      {tabs.length > 0 && (
+        <nav
+          aria-label="Seções"
+          className="no-print fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t bg-card px-1 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden"
+        >
+          {mobileTabs.map((t) => (
+            <BottomItem key={t.id} icon={t.icon} label={t.label} active={t.id === current} onClick={() => go(t.id)} />
+          ))}
+          <BottomItem
+            icon={Menu}
+            label="Mais"
+            active={!mobileTabs.some((t) => t.id === current)}
+            onClick={() => setMenuOpen(true)}
+          />
+        </nav>
       )}
+
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent
+          side="left"
+          aria-describedby={undefined}
+          className="w-72 gap-0 border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
+        >
+          <SheetTitle className="sr-only">Menu</SheetTitle>
+          {sidebar}
+        </SheetContent>
+      </Sheet>
     </>
   );
+}
+
+function CampaignMark({ campaign }: { campaign: CampaignAccess }) {
+  return (
+    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">
+      {campaign.name.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
+/** Conteúdo do menu lateral: campanha, seções agrupadas, usuário. O mesmo no desktop e na gaveta do celular. */
+function SidebarBody({
+  me,
+  campaign,
+  tabs,
+  current,
+  onGo,
+  onCampaign,
+  onLogout,
+}: {
+  me: Me;
+  campaign: CampaignAccess;
+  tabs: TabDef[];
+  current: Tab | undefined;
+  onGo: (t: Tab) => void;
+  onCampaign: (id: string) => void;
+  onLogout: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col gap-6 overflow-y-auto px-3.5 py-5">
+      <div className="flex items-center gap-2.5 px-2">
+        <CampaignMark campaign={campaign} />
+        <div className="min-w-0 leading-tight">
+          <div className="truncate text-sm font-semibold text-white">{campaign.name}</div>
+          <div className="text-xs text-sidebar-muted">{ROLE_LABELS[campaign.role]}</div>
+        </div>
+      </div>
+      {me.campaigns.length > 1 && (
+        <Select value={campaign.id} onValueChange={onCampaign}>
+          <SelectTrigger
+            size="sm"
+            aria-label="Campanha"
+            className="w-full border-sidebar-border bg-sidebar-accent text-white [&_svg]:text-sidebar-muted!"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {me.campaigns.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      <nav aria-label="Seções" className="grid gap-5">
+        {GROUPS.map((g) => {
+          const items = tabs.filter((t) => t.group === g.id);
+          if (!items.length) return null;
+          return (
+            <div key={g.id} className="grid gap-0.5">
+              <div className="px-2.5 pb-1.5 text-[11px] font-medium tracking-wider text-sidebar-muted uppercase">
+                {g.label}
+              </div>
+              {items.map((t) => {
+                const Icon = t.icon;
+                const active = t.id === current;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => onGo(t.id)}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sidebar-muted",
+                      active
+                        ? "bg-sidebar-primary font-medium text-sidebar-primary-foreground"
+                        : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </nav>
+      <div className="mt-auto flex items-center gap-2.5 border-t border-sidebar-border px-2 pt-3.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-accent text-xs font-semibold text-white">
+          {initials(me.name)}
+        </span>
+        <div className="min-w-0 flex-1 truncate text-sm text-white">{me.name}</div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Sair"
+          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
+          onClick={onLogout}
+        >
+          <LogOut />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function BottomItem({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px]",
+        active ? "font-semibold text-primary" : "text-muted-foreground",
+      )}
+    >
+      <Icon className="size-5" />
+      {label}
+    </button>
+  );
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
 /** Aviso de não garantia, aceito no primeiro acesso e registrado (D16). */
