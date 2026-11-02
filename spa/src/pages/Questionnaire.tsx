@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, ApiError, type CampaignAccess, type Condition, type QQuestion, type QuestionnaireDef, type QuestionnaireVersion } from "../api";
 import { usePoll } from "../usePoll";
+import { useQueryState } from "../url";
 import { CheckCircle2, Upload as UploadIcon } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,7 +27,9 @@ const TYPE_LABELS: Record<string, string> = {
 /** Prévia de leitura do questionário (perguntas, condições e fluxo por extenso) e aprovação pelo cliente. */
 export function Questionnaire({ campaign }: { campaign: CampaignAccess }) {
   const { data, error, reload } = usePoll<QuestionnaireVersion[]>(`/api/campaigns/${campaign.id}/questionnaires`, 0);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [version, setVersion] = useQueryState("versao", "");
+  const selected = version || null;
+  const setSelected = (id: string | null) => setVersion(id ?? "");
   const [busy, setBusy] = useState(false);
   const isAdmin = campaign.role === "admin";
   if (error) return <ErrorState>{error}</ErrorState>;

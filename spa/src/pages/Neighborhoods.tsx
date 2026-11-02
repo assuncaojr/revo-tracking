@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { Route, Routes, useNavigate, useParams } from "react-router";
+import { useQueryState } from "../url";
 import type { CampaignAccess, NeighborhoodDetail, Neighborhoods as HoodsData } from "../api";
 import { useShowMargins } from "../prefs";
 import { usePoll } from "../usePoll";
@@ -59,7 +59,7 @@ function HoodsIndex({ campaign, view }: { campaign: CampaignAccess; view: "list"
 }
 
 function HoodList({ campaignId, onOpen }: { campaignId: string; onOpen: (id: string) => void }) {
-  const [indicator, setIndicator] = useState("approval");
+  const [indicator, setIndicator] = useQueryState("indicador", "approval");
   const { data, error } = usePoll<HoodsData>(`/api/campaigns/${campaignId}/results/neighborhoods?period=all`, 5 * 60_000);
   if (error) return <ErrorState>{error}</ErrorState>;
   if (!data) return <LoadingState />;

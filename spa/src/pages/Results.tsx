@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Navigate, useNavigate, useParams, useSearchParams } from "react-router";
+import { Navigate, useNavigate, useParams } from "react-router";
+import { periodQuery, usePeriodParam, useQueryState } from "../url";
 import type {
   CampaignAccess,
   Insights as InsightsData,
@@ -28,31 +28,18 @@ const PERIODS: Option<"7d" | "all">[] = [
   { value: "all", label: "Todo o período" },
 ];
 
-/** Período lido da URL (`?periodo=tudo`), para o link e o voltar do boletim manterem a escolha. */
-function usePeriod(): ["7d" | "all", (p: "7d" | "all") => void] {
-  const [params, setParams] = useSearchParams();
-  const period = params.get("periodo") === "tudo" ? "all" : "7d";
-  return [period, (p) => setParams(p === "all" ? { periodo: "tudo" } : {}, { replace: true })];
-}
-
 /** Boletim como rota própria (/resumo/boletim): dá para recarregar, voltar e mandar o link. */
 export function SummaryReport({ campaign }: { campaign: CampaignAccess }) {
-  const [period] = usePeriod();
+  const [period] = usePeriodParam("7d");
   const navigate = useNavigate();
-  return (
-    <Report
-      campaign={campaign}
-      period={period}
-      onBack={() => navigate(period === "all" ? "/resumo?periodo=tudo" : "/resumo")}
-    />
-  );
+  return <Report campaign={campaign} period={period} onBack={() => navigate(`/resumo${periodQuery(period, "7d")}`)} />;
 }
 
 /** Resumo (D28): o que mudou em frases, os balanços, os indicadores e a evolução. Sempre bruto, sem ponderação. */
 export function Summary({ campaign }: { campaign: CampaignAccess }) {
-  const [period, setPeriod] = usePeriod();
+  const [period, setPeriod] = usePeriodParam("7d");
   const navigate = useNavigate();
-  const [selected, setSelected] = useState("approval");
+  const [selected, setSelected] = useQueryState("indicador", "approval");
   const showMargins = useShowMargins();
   const { data, error, updatedAt } = usePoll<OverviewData>(
     `/api/campaigns/${campaign.id}/results/overview?period=${period}`,
@@ -84,7 +71,7 @@ export function Summary({ campaign }: { campaign: CampaignAccess }) {
         <MarginsToggle />
         <Button
           className="max-sm:w-full"
-          onClick={() => navigate(period === "all" ? "/resumo/boletim?periodo=tudo" : "/resumo/boletim")}
+          onClick={() => navigate(`/resumo/boletim${periodQuery(period, "7d")}`)}
         >
           <Printer />
           Boletim para reunião
@@ -145,8 +132,8 @@ export function Details({ campaign }: { campaign: CampaignAccess }) {
 }
 
 function InsightsView({ campaign }: { campaign: CampaignAccess }) {
-  const [period, setPeriod] = useState<"7d" | "all">("all");
-  const [indicator, setIndicator] = useState("approval");
+  const [period, setPeriod] = usePeriodParam("all");
+  const [indicator, setIndicator] = useQueryState("indicador", "approval");
   const { data, error } = usePoll<InsightsData>(
     `/api/campaigns/${campaign.id}/results/insights?period=${period}&indicator=${indicator}`,
     5 * 60_000,
@@ -176,7 +163,8 @@ function InsightsView({ campaign }: { campaign: CampaignAccess }) {
 
 /** Resultado bruto (sem ponderação) das perguntas fechadas, total e por estrato. */
 function Questions({ campaign }: { campaign: CampaignAccess }) {
-  const [day, setDay] = useState("");
+  const [rawDay, setDay] = useQueryState("dia", "");
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(rawDay) ? rawDay : "";
   const { data, error } = usePoll<ResultsData>(
     `/api/campaigns/${campaign.id}/results${day ? `?day=${day}` : ""}`,
     5 * 60_000,

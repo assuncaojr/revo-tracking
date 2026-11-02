@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { useShowMargins } from "../prefs";
 import type { CrossGroup, Insights as InsightsData, RankingItem } from "../api";
 import { fmt, margin, stratumColor } from "./Overview";
 import { TONE_COLORS, TONE_LABELS, toneOf } from "../tone";
+import { useQueryState } from "../url";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Legend } from "@/components/controls";
@@ -22,7 +22,9 @@ function domain(groups: CrossGroup[], mean: boolean): [number, number] {
 
 /** Indicador por grupo (voto passado, estrato, sexo…): ponto com a margem, e a linha vertical do total. */
 export function Crosstab({ data }: { data: InsightsData }) {
-  const [all, setAll] = useState(false);
+  const [groups, setGroups] = useQueryState("grupos", "diferentes", ["diferentes", "todos"]);
+  const all = groups === "todos";
+  const setAll = (v: boolean) => setGroups(v ? "todos" : "diferentes");
   const showMargins = useShowMargins();
   const ct = data.crosstab;
   if (!ct) return <EmptyState>Esta campanha ainda não tem indicadores configurados.</EmptyState>;

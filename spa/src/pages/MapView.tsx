@@ -6,6 +6,7 @@ import { duration, FLAG_LABELS, STATUS_LABELS, timeOf } from "../format";
 import { usePoll } from "../usePoll";
 import { fmt, margin } from "./Overview";
 import { TONE_COLORS, TONE_LABELS, TONE_ORDER, toneOf } from "../tone";
+import { usePeriodParam, useQueryState } from "../url";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Legend, Segmented, SelectField } from "@/components/controls";
@@ -48,8 +49,13 @@ function useLeaflet(draw: (map: L.Map, layer: L.LayerGroup) => void, deps: unkno
   return el;
 }
 
+const LAYERS = ["opiniao", "cobertura"] as const;
+
 export function MapView({ campaign }: { campaign: CampaignAccess }) {
-  const [mode, setMode] = useState<"opinion" | "coverage">("opinion");
+  const [layerParam, setLayer] = useQueryState("camada", "opiniao", LAYERS);
+  // cobertura é só da equipe: link com ?camada=cobertura aberto pelo cliente mostra a opinião
+  const mode = layerParam === "cobertura" && campaign.staff ? "coverage" : "opinion";
+  const setMode = (m: "opinion" | "coverage") => setLayer(m === "coverage" ? "cobertura" : "opiniao");
   return (
     <>
       {campaign.staff && (
@@ -76,9 +82,11 @@ export function MapView({ campaign }: { campaign: CampaignAccess }) {
 // --- opinião em hexágonos ---
 
 function Opinion({ campaign }: { campaign: CampaignAccess }) {
-  const [period, setPeriod] = useState<"7d" | "all">("all");
-  const [indicator, setIndicator] = useState("approval");
-  const [size, setSize] = useState<number | null>(null);
+  const [period, setPeriod] = usePeriodParam("all");
+  const [indicator, setIndicator] = useQueryState("indicador", "approval");
+  const [sizeParam, setSizeParam] = useQueryState("tamanho", "");
+  const size = Number(sizeParam) > 0 ? Number(sizeParam) : null;
+  const setSize = (v: number) => setSizeParam(String(v));
   const { data, error } = usePoll<OpinionMap>(
     `/api/campaigns/${campaign.id}/results/map?period=${period}&indicator=${indicator}${size ? `&size=${size}` : ""}`,
     5 * 60_000,
@@ -178,7 +186,8 @@ function Opinion({ campaign }: { campaign: CampaignAccess }) {
 // --- cobertura do campo (só equipe) ---
 
 function Coverage({ campaignId }: { campaignId: string }) {
-  const [day, setDay] = useState("");
+  const [rawDay, setDay] = useQueryState("dia", "");
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(rawDay) ? rawDay : "";
   const { data, error } = usePoll<CoverageMap>(`/api/campaigns/${campaignId}/field/map${day ? `?day=${day}` : ""}`);
   const el = useLeaflet(
     (map, layer) => {
