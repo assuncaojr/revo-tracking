@@ -26,25 +26,57 @@ function escape(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 }
 
-/** Mapa Leaflet controlado por fora: `draw` redesenha a camada de dados sem recriar o mapa. */
-function useLeaflet(draw: (map: L.Map, layer: L.LayerGroup) => void, deps: unknown[]) {
+/** Enquadramento do mapa na URL (?mapa=lat,lng,zoom), para o link abrir com o mesmo zoom. O centro vai com 3
+    casas (~110 m): suficiente para a vista e longe de apontar a casa de alguém (LGPD). */
+function parseView(v: string): { center: [number, number]; zoom: number } | null {
+  const [lat, lng, zoom] = v.split(",").map(Number);
+  if (![lat, lng, zoom].every(Number.isFinite) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { center: [lat, lng], zoom: Math.min(18, Math.max(3, Math.round(zoom))) };
+}
+
+/** Mapa Leaflet controlado por fora: `draw` redesenha a camada de dados sem recriar o mapa. `fit` enquadra os
+    dados, exceto na primeira vez quando o mapa abriu com o enquadramento vindo da URL. */
+function useLeaflet(
+  draw: (map: L.Map, layer: L.LayerGroup, fit: (b: L.LatLngBoundsExpression, o?: L.FitBoundsOptions) => void) => void,
+  deps: unknown[],
+) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
+  const [viewParam, setViewParam] = useQueryState("mapa", "");
+  const setView = useRef(setViewParam);
+  setView.current = setViewParam;
+  const skipFit = useRef(false);
   useEffect(() => {
     if (!el.current || map.current) return;
-    map.current = L.map(el.current, { scrollWheelZoom: false, center: [-4.859, -43.356], zoom: 13 });
+    const initial = parseView(viewParam);
+    skipFit.current = !!initial;
+    map.current = L.map(el.current, {
+      scrollWheelZoom: false,
+      center: initial?.center ?? [-4.859, -43.356],
+      zoom: initial?.zoom ?? 13,
+    });
     L.tileLayer(TILES, { attribution: ATTRIBUTION, maxZoom: 18 }).addTo(map.current);
     layer.current = L.layerGroup().addTo(map.current);
+    map.current.on("moveend", () => {
+      const m = map.current;
+      if (!m) return;
+      const c = m.getCenter();
+      setView.current(`${c.lat.toFixed(3)},${c.lng.toFixed(3)},${m.getZoom()}`);
+    });
     return () => {
       map.current?.remove();
       map.current = null;
     };
+    // o enquadramento da URL só vale na abertura; depois quem manda é o mapa
   }, []);
   useEffect(() => {
     if (!map.current || !layer.current) return;
     layer.current.clearLayers();
-    draw(map.current, layer.current);
+    draw(map.current, layer.current, (b, o) => {
+      if (skipFit.current) skipFit.current = false;
+      else map.current?.fitBounds(b, o);
+    });
   }, deps);
   return el;
 }
@@ -96,7 +128,7 @@ function Opinion({ campaign }: { campaign: CampaignAccess }) {
   const [fitted, setFitted] = useState(false);
 
   const el = useLeaflet(
-    (map, layer) => {
+    (_map, layer, fit) => {
       if (!data) return;
       for (const c of data.cells) {
         const tone = toneOf(c, ref, data.indicator.favorable, mean);
@@ -114,7 +146,7 @@ function Opinion({ campaign }: { campaign: CampaignAccess }) {
         poly.addTo(layer);
       }
       if (data.bounds && !fitted) {
-        map.fitBounds(data.bounds, { padding: [20, 20] });
+        fit(data.bounds, { padding: [20, 20] });
         setFitted(true);
       }
     },
@@ -190,7 +222,7 @@ function Coverage({ campaignId }: { campaignId: string }) {
   const day = /^\d{4}-\d{2}-\d{2}$/.test(rawDay) ? rawDay : "";
   const { data, error } = usePoll<CoverageMap>(`/api/campaigns/${campaignId}/field/map${day ? `?day=${day}` : ""}`);
   const el = useLeaflet(
-    (map, layer) => {
+    (_map, layer, fit) => {
       if (!data) return;
       const bounds: [number, number][] = [];
       for (const p of data.points) {
@@ -219,7 +251,7 @@ function Coverage({ campaignId }: { campaignId: string }) {
           .addTo(layer);
         if (!i.far) bounds.push([i.lat, i.lng]);
       }
-      if (bounds.length) map.fitBounds(bounds, { padding: [24, 24], maxZoom: 16 });
+      if (bounds.length) fit(bounds, { padding: [24, 24], maxZoom: 16 });
     },
     [data],
   );

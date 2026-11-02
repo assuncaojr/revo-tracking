@@ -36,7 +36,7 @@ Navegação com `react-router` (URLs em português, porque aparecem para o usuá
 | `/detalhes/cruzamentos` · `perguntas` · `progresso` · `metodo` | vistas do Detalhes |
 | `/cadastros/entrevistadores` · `aparelhos` · `marcos` · `locais` · `usuarios` | seções de Cadastros |
 
-As escolhas dentro da tela também vão na URL, para um link compartilhado abrir igual (`src/url.ts`, `useQueryState`): `indicador`, `periodo` (`7dias` | `tudo`), `grupos=todos` (cruzamentos), `dia` (pergunta a pergunta, cobertura), `camada=cobertura` e `tamanho` (mapa), `versao` (questionário). O valor padrão não aparece; valor inválido volta ao padrão; trocar não cria entrada no histórico. A URL só escolhe o que mostrar: quem abre continua limitado ao próprio papel (ex.: `camada=cobertura` aberto pelo cliente mostra a opinião). "Mostrar margens de erro" é preferência de quem lê e fica no navegador, fora da URL.
+As escolhas dentro da tela também vão na URL, para um link compartilhado abrir igual (`src/url.ts`, `useQueryState`): `indicador`, `periodo` (`7dias` | `tudo`), `grupos=todos` (cruzamentos), `dia` (pergunta a pergunta, cobertura), `camada=cobertura`, `tamanho` e `mapa=lat,lng,zoom` (mapa; centro com 3 casas), `versao` (questionário), `ver=tabela` (evolução), `margens=1` (D33). O valor padrão não aparece; valor inválido volta ao padrão; trocar não cria entrada no histórico. A URL só escolhe o que mostrar: quem abre continua limitado ao próprio papel (ex.: `camada=cobertura` aberto pelo cliente mostra a opinião). As margens acompanham a navegação enquanto ligadas (`useCarryMargins` no App).
 
 Em produção, o núcleo precisa devolver o `index.html` para qualquer caminho fora de `/api` (T3); o `pnpm dev` já faz isso.
 

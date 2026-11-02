@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router";
+import { useCarryMargins } from "./prefs";
 import { api, ApiError, type CampaignAccess, type Me, type Role } from "./api";
 import { DISCLAIMER, ROLE_LABELS } from "./format";
 import { Login } from "./pages/Login";
@@ -67,6 +68,7 @@ export function App() {
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
+  useCarryMargins();
 
   const loadMe = useCallback(async () => {
     try {

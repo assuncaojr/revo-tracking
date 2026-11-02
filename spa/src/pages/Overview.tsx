@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Balance, CampaignEventItem, Estimate, Indicator, Overview as OverviewData } from "../api";
 import { useShowMargins } from "../prefs";
+import { useQueryState } from "../url";
 import { toneOf } from "../tone";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -311,7 +312,9 @@ export function TrendChart({
 }) {
   const showMargins = useShowMargins();
   const [hover, setHover] = useState<number | null>(null);
-  const [table, setTable] = useState(false);
+  const [shape, setShape] = useQueryState("ver", "grafico", ["grafico", "tabela"]);
+  const table = shape === "tabela";
+  const setTable = (v: boolean) => setShape(v ? "tabela" : "grafico");
   const [wrapRef, W] = useWidth<HTMLDivElement>(760);
   const color = polarityColor(ind);
   const s = ind.series;
