@@ -65,7 +65,7 @@ export function IndicatorTiles({
         <button
           key={ind.key}
           className={cn(
-            "tile grid content-start gap-1 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:border-primary/40 sm:p-4",
+            "tile grid content-start gap-1 rounded-xl border bg-card p-3 text-left shadow-(--shadow-card) transition-colors hover:border-primary/40 sm:p-4",
             ind.key === selected && "selected border-primary ring-[3px] ring-selection hover:border-primary print:border-border print:ring-0",
           )}
           onClick={() => onSelect(ind.key)}
@@ -528,7 +528,7 @@ const TONE_MARK: Record<string, string> = { favorable: "var(--fav)", unfavorable
 export function Headlines({ items, title }: { items: { tone: string; text: string }[]; title: string }) {
   if (!items.length) return null;
   return (
-    <Card className="headlines my-4 gap-3 border-l-4 border-l-foreground p-4 break-inside-avoid sm:p-5">
+    <Card className="headlines my-4 gap-3 p-4 break-inside-avoid sm:p-5">
       <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
       <ul className="grid gap-2.5">
         {items.map((h) => (

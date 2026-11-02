@@ -82,7 +82,7 @@ export function EmptyState({ children }: { children: ReactNode }) {
 /** Nota de leitura (resultado bruto, células ocultas…): discreta, mas sempre visível. */
 export function Notice({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <Alert className={cn("my-4 border-l-4 border-l-muted-foreground/40 bg-secondary/60", className)}>
+    <Alert className={cn("my-4 border-transparent bg-secondary/70", className)}>
       <Info />
       <AlertDescription className="block text-foreground/80">{children}</AlertDescription>
     </Alert>

@@ -150,7 +150,7 @@ function Upload({ campaignId, onDone }: { campaignId: string; onDone: (id: strin
     }
   };
   return (
-    <Accordion type="single" collapsible className="mb-4 rounded-xl border bg-card px-4 shadow-xs sm:px-5">
+    <Accordion type="single" collapsible className="mb-4 rounded-xl border bg-card px-4 shadow-(--shadow-card) sm:px-5">
       <AccordionItem value="upload" className="border-0">
         <AccordionTrigger>
           <span className="flex items-center gap-2">
